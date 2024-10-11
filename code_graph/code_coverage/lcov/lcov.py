@@ -75,7 +75,7 @@ def _line(l, report):
         if 'null' not in content:
             content = content.split(',')
             line, hit = int(content[0]), int(content[1])
-            report['lines'].append(dict(line=line, hit=hit))
+            report['lines'].append((line, hit))
 
     #--------------------------------------------------------------------------
     # Functions
@@ -136,7 +136,10 @@ def process_lcov(repo: str, lcov_file: str) -> None:
     prefix = "/__w/FalkorDB/FalkorDB/src" # prefix to remove
     g = Graph(repo)
 
+    #---------------------------------------------------------------------------
     # Process report
+    #---------------------------------------------------------------------------
+
     for r in report:
         file_path = r['file']
         file_path = file_path[len(prefix):]
@@ -154,11 +157,62 @@ def process_lcov(repo: str, lcov_file: str) -> None:
 
         g.set_file_coverage(path, name, ext, hit_percentage)
 
+        #-----------------------------------------------------------------------
         # Process functions
+        #-----------------------------------------------------------------------
+
         # for each function compute its coverage
         if hit_percentage == 1:
             # the entire file is covered
             continue
+
+        # get functions in file
+        funcs = g.get_functions_in_file(path, name, ext)
+
+        # no functions, continue
+        if len(funcs) == 0:
+            continue
+
+        # sort lines
+        r['lines'].sort()
+        lines = r['lines']
+
+        # sort functions
+        funcs.sort(key=lambda obj: obj.src_start)
+
+        for f in funcs:
+            src_start = f.src_start
+            src_end   = f.src_end
+            
+            # find first line within function boundries
+            idx = 0
+            while src_start > lines[idx][0] and idx < len(lines):
+                idx += 1
+
+            # couldn't find line within function boundries
+            # because functions are sorted there wouldn't be any lines
+            # within the next function boundry
+            if idx == len(lines):
+                f.coverage_precentage = 0
+                lines = [] # clear lines
+
+            # count number of lines within function boundry
+            n = len(lines)
+            hit_count = 0
+            while src_start <= lines[idx][0] and src_end >= lines[idx][0] and idx < n:
+                idx += 1
+                hit_count += 1
+
+            # update function coverage precentage
+            f.coverage_precentage = hit_count / (src_end - src_start)
+
+            # remove consumed lines
+            lines = lines[idx:]
+
+        # update functions within the graph
+        ids = [f.id for f in funcs]
+        metadata = [{'coverage_precentage': f.coverage_precentage } for f in funcs]
+        g.set_functions_metadata(ids, metadata)
 
     #for file in report:
     #    file_name = file['file']

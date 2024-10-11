@@ -129,6 +129,33 @@ class Graph():
 
         return f
 
+    
+    # set functions metadata
+    def set_functions_metadata(self, ids: List[int], metadata: List[dict]) -> None:
+        assert(len(ids) == len(metadata))
+
+        # TODO: Match (f:Function)
+        q = """UNWIND range(0, size($ids)) as i
+               WITH $ids[i] AS id, $values[i] AS v
+               MATCH (f)
+               WHERE ID(f) = id
+               SET f += v"""
+        
+        params = {'ids': ids, 'values': metadata}
+
+        self.g.query(q, params)
+
+    # get all functions defined by file
+    def get_functions_in_file(self, path: str, name: str, ext: str) -> List[Function]:
+        q = """MATCH (f:File {path: $path, name: $name, ext: $ext})
+               MATCH (f)-[:DEFINES]->(func:Function)
+               RETURN collect(func)"""
+
+        params = {'path': path, 'name': name, 'ext': ext}
+        funcs = self.g.query(q, params).result_set[0][0]
+        
+        return [self._function_from_node(n) for n in funcs]
+
     def get_function_by_name(self, name: str) -> Optional[Function]:
         q = "MATCH (f:Function) WHERE f.name = $name RETURN f LIMIT 1"
         res = self.g.query(q, {'name': name}).result_set
