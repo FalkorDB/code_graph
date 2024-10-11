@@ -106,7 +106,7 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         concurrent.futures.wait(tasks)
 
-    def analyze_sources(self, path: Path) -> None:
+    def analyze_sources(self, path: str) -> None:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # First pass analysis of the source code
             self.first_pass(path, path, executor)
@@ -114,7 +114,7 @@ class SourceAnalyzer():
             # Second pass analysis of the source code
             self.second_pass(path, path, executor)
 
-    def analyze_repository(self, url: str) -> None:
+    def analyze_github_repository(self, url: str) -> None:
         """
         Analyze a Git repository given its URL.
 
@@ -140,5 +140,25 @@ class SourceAnalyzer():
 
             # Analyze source files
             self.analyze_sources(temp_dir)
+
+        logger.info("Done processing repository")
+
+    def analyze_local_repository(self, path: str) -> None:
+        """
+        Analyze a local Git repository.
+
+        Args:
+            path (str): Path to a local git repository
+        """
+
+        repo_name = os.path.split(os.path.normpath(path))[-1]
+        logger.debug(f'repo_name: {repo_name}')
+
+        # Initialize the graph and analyzer
+        self.graph = Graph(repo_name, self.host, self.port, self.username,
+                           self.password)
+
+        # Analyze source files
+        self.analyze_sources(path)
 
         logger.info("Done processing repository")

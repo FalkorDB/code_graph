@@ -192,6 +192,59 @@ def process_repo():
 
     return jsonify(response), 200
 
+@app.route('/process_local_repo', methods=['POST'])
+def process_local_repo():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # Process the data
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+    logger.debug(f'Received repo: {repo}')
+
+    # Create source code analyzer
+    analyzer = SourceAnalyzer(host     = FALKORDB_HOST,
+                              port     = FALKORDB_PORT,
+                              username = FALKORDB_USERNAME,
+                              password = FALKORDB_PASSWORD)
+
+    try:
+        analyzer.analyze_local_repository(repo)
+    except Exception as e:
+        logger.error(f'An error occurred: {e}')
+        return jsonify({'status': f'Failed to process repository: {repo}'}), 400
+
+    # Create a response
+    response = {
+        'status': 'success',
+    }
+
+    return jsonify(response), 200
+
+@app.route('/process_code_coverage', methods=['POST'])
+def process_code_coverage():
+
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # Process the data
+    repo = data.get('repo')
+    lcov = data.get('lcov')
+
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+    if lcov is None:
+        return jsonify({'status': f'Missing mandatory parameter "lcov"'}), 400
+
+    process_lcov(repo, lcov)
+
+    # Create a response
+    response = {
+        'status': 'success',
+    }
+
+    return jsonify(response), 200
 if __name__ == '__main__':
     app.run(debug=True)
 

@@ -239,6 +239,20 @@ class Graph():
 
         return file
 
+    # set file code coverage
+    # if file coverage is 100% set every defined function coverage to 100% aswell
+    def set_file_coverage(self, path: str, name: str, ext: str, coverage: float) -> None:
+        q = """MATCH (f:File {path: $path, name: $name, ext: $ext})
+               SET f.coverage_precentage = $coverage
+               WITH f
+               WHERE $coverage = 1.0
+               MATCH (f)-[:DEFINES]->(func:Function)
+               SET func.coverage_precentage = 1.0"""
+
+        params = {'path': path, 'name': name, 'ext': ext, 'coverage': coverage}
+
+        res = self.g.query(q, params)
+
     def connect_entities(self, relation: str, src_id: int, dest_id: int) -> None:
         """
         Establish a relationship between src and dest
