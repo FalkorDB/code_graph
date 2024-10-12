@@ -186,7 +186,7 @@ def process_lcov(repo: str, lcov_file: str) -> None:
             
             # find first line within function boundries
             idx = 0
-            while src_start > lines[idx][0] and idx < len(lines):
+            while idx < len(lines) and src_start > lines[idx][0]:
                 idx += 1
 
             # couldn't find line within function boundries
@@ -199,12 +199,12 @@ def process_lcov(repo: str, lcov_file: str) -> None:
             # count number of lines within function boundry
             n = len(lines)
             hit_count = 0
-            while src_start <= lines[idx][0] and src_end >= lines[idx][0] and idx < n:
+            while  idx < n and src_start <= lines[idx][0] and src_end >= lines[idx][0]:
                 idx += 1
                 hit_count += 1
 
             # update function coverage precentage
-            f.coverage_precentage = hit_count / (src_end - src_start)
+            f.coverage_precentage = hit_count / max(1, (src_end - src_start))
 
             # remove consumed lines
             lines = lines[idx:]
