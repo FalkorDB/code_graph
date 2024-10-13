@@ -260,8 +260,7 @@ class Graph():
         """
 
         params = {'files': files}
-        #self.g.query(q, params)
-        self.g.explain(q, params)
+        self.g.query(q, params)
 
     def get_file(self, path: str, name: str, ext: str) -> Optional[File]:
         """
