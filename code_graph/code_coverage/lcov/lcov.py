@@ -126,14 +126,14 @@ def _line(l, report):
 
 def process_lcov(repo: str, lcov_file: str) -> None:
     # create report from coverage lcov file
-    #with open("./coverage.lcov", "r") as file:
     with open(lcov_file, "r") as file:
         content = file.read()  # Reads the entire file as a single string
 
     report = lcovparse(content)
-    #print(f"report: {report}")
 
-    prefix = "/__w/FalkorDB/FalkorDB/src" # prefix to remove
+    # SF:/__w/FalkorDB/FalkorDB/src/algorithms/detect_cycle.c
+    prefix = "/__w/FalkorDB/FalkorDB/" # prefix to remove
+
     g = Graph(repo)
 
     #---------------------------------------------------------------------------
@@ -143,8 +143,6 @@ def process_lcov(repo: str, lcov_file: str) -> None:
     for r in report:
         file_path = r['file']
         file_path = file_path[len(prefix):]
-
-        print(f"Updating file: {file_path}")
 
         stats = r['stats']
         lines = stats['lines']
@@ -213,35 +211,6 @@ def process_lcov(repo: str, lcov_file: str) -> None:
         ids = [f.id for f in funcs]
         metadata = [{'coverage_precentage': f.coverage_precentage } for f in funcs]
         g.set_functions_metadata(ids, metadata)
-
-    #for file in report:
-    #    file_name = file['file']
-    #    print(f"file_name: {file_name}")
-    #    print(f"lines: {file['stats']['lines']}")
-    #    print(f"hists: {file['stats']['hit']}")
-    #    for line in file['lines']:
-    #        print(f"line number: {line['line']}, hits: {line['hit']}")
-
-#{
-#    'test': '',
-#    'file': 'falkordb/falkordb.py',
-#    'stats': {
-#        'lines': 42,
-#        'hit': 35
-#    },
-#    'lines': [
-#        {'line': 1, 'hit': 1},
-#        {'line': 2, 'hit': 1},
-#        {'line': 3, 'hit': 1},
-#        {'line': 4, 'hit': 1},
-#        {'line': 5, 'hit': 1},
-#        {'line': 8, 'hit': 1},
-#        {'line': 9, 'hit': 1}
-#    ],
-#    'functions': [],
-#    'branches': []
-#}
-
 
 if __name__ == '__main__':
     process_lcov("src", "./falkordb.lcov")

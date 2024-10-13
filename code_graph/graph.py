@@ -13,6 +13,20 @@ class Graph():
                            password=password)
         self.g = self.db.select_graph(name)
 
+        # create indicies
+
+        # index File path, name and ext fields
+        try:
+            self.g.create_node_range_index("File", "path", "name", "ext")
+        except Exception:
+            pass
+
+        # index Function
+        try:
+            self.g.create_node_range_index("File", "path", "name")
+        except Exception:
+            pass
+
     def add_class(self, c: Class) -> None:
         """
         Adds a class node to the graph database.
@@ -225,6 +239,29 @@ class Graph():
 
         res = self.g.query(q, params)
         file.id = res.result_set[0][0]
+
+    def delete_files(self, files: List[dict]) -> None:
+        """
+        Deletes file(s) from the graph in addition to any other entity
+        defined in the file
+
+        a file is defined by its path, name and extension
+        files = [{'path':_, 'name': _, 'ext': _}, ...]
+        """
+
+        q = """UNWIND $files as file
+               MATCH (f:File {path: file['path'], name: file['name'], ext: file['ext']})
+               CALL {
+                   WITH f
+                   MATCH (f)-[:DEFINES]->(e)
+                   DELETE e
+               }
+               DELETE f
+        """
+
+        params = {'files': files}
+        #self.g.query(q, params)
+        self.g.explain(q, params)
 
     def get_file(self, path: str, name: str, ext: str) -> Optional[File]:
         """

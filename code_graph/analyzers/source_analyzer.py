@@ -4,7 +4,7 @@ import concurrent.futures
 
 from git import Repo
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from ..graph import Graph
 from .c.analyzer import CAnalyzer
@@ -27,20 +27,26 @@ class SourceAnalyzer():
         self.username  = username
         self.password  = password
 
-    def first_pass(self, base: str, root: str,
-                   executor: concurrent.futures.Executor) -> None:
+    def first_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Perform the first pass analysis on source files in the given directory tree.
 
         Args:
-            base (str): The base directory path to be used for relative paths.
-            root (str): The root directory path to start the analysis from.
+            ignore (list(str)): List of paths to ignore
             executor (concurrent.futures.Executor): The executor to run tasks concurrently.
         """
 
-        print(f'root: {root}')
         tasks = []
-        for dirpath, dirnames, filenames in os.walk(root):
+        for dirpath, dirnames, filenames in os.walk("."):
+
+            # skip current directory if it is within the ignore list
+            if dirpath in ignore:
+                # in-place clear dirnames to prevent os.walk from recursing into
+                # any of the nested directories
+                logger.info(f'ignoring directory: {dirpath}')
+                dirnames[:] = []
+                continue
+
             logger.info(f'Processing directory: {dirpath}')
 
             # Process each file in the current directory
@@ -57,9 +63,8 @@ class SourceAnalyzer():
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
-                        relative_path = str(path).replace(base, '')
                         ext = path.suffix
-                        analyzers[ext].first_pass(Path(relative_path), f, self.graph)
+                        analyzers[ext].first_pass(path, f, self.graph)
 
                 process_file(file_path)
                 #task = executor.submit(process_file, file_path)
@@ -106,13 +111,13 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         concurrent.futures.wait(tasks)
 
-    def analyze_sources(self, path: str) -> None:
+    def analyze_sources(self, ignore: List[str]) -> None:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # First pass analysis of the source code
-            self.first_pass(path, path, executor)
+            self.first_pass(ignore, executor)
 
             # Second pass analysis of the source code
-            self.second_pass(path, path, executor)
+            #self.second_pass(ignore, executor)
 
     def analyze_github_repository(self, url: str) -> None:
         """
@@ -143,13 +148,19 @@ class SourceAnalyzer():
 
         logger.info("Done processing repository")
 
-    def analyze_local_repository(self, path: str) -> None:
+    def analyze_local_repository(self, path: str, ignore: Optional[List[str]]) -> None:
         """
         Analyze a local Git repository.
 
         Args:
             path (str): Path to a local git repository
+            ignore (List(str)): List of paths to skip
         """
+
+        ignore = ignore or []
+
+        # change working directory to repo
+        os.chdir(path)
 
         repo_name = os.path.split(os.path.normpath(path))[-1]
         logger.debug(f'repo_name: {repo_name}')
@@ -159,6 +170,6 @@ class SourceAnalyzer():
                            self.password)
 
         # Analyze source files
-        self.analyze_sources(path)
+        self.analyze_sources(ignore)
 
         logger.info("Done processing repository")

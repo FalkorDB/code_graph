@@ -353,7 +353,11 @@ class CAnalyzer(AbstractAnalyzer):
         # Parse file
         source_code = f.read()
         tree = self.parser.parse(source_code)
-        source_code = source_code.decode('utf-8')
+        try:
+            source_code = source_code.decode('utf-8')
+        except Exception as e:
+            logger.error(f"Failed decoding source code: {e}")
+            source_code = ''
 
         # Process function definitions
         query = C_LANGUAGE.query("(function_definition) @function")

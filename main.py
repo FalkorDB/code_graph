@@ -203,6 +203,10 @@ def process_local_repo():
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
     logger.debug(f'Received repo: {repo}')
 
+    ignore = data.get('ignore')
+    if ignore is not None:
+        logger.debug(f"Ignoring the following paths: {ignore}")
+
     # Create source code analyzer
     analyzer = SourceAnalyzer(host     = FALKORDB_HOST,
                               port     = FALKORDB_PORT,
@@ -210,7 +214,7 @@ def process_local_repo():
                               password = FALKORDB_PASSWORD)
 
     try:
-        analyzer.analyze_local_repository(repo)
+        analyzer.analyze_local_repository(repo, ignore)
     except Exception as e:
         logger.error(f'An error occurred: {e}')
         return jsonify({'status': f'Failed to process repository: {repo}'}), 400
@@ -245,6 +249,28 @@ def process_code_coverage():
     }
 
     return jsonify(response), 200
+
+@app.route('/process_git_history', methods=['POST'])
+def process_git_history():
+
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # path to local repository
+    repo = data.get('repo')
+
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    build_commit_graph(repo)
+
+    # Create a response
+    response = {
+        'status': 'success',
+    }
+
+    return jsonify(response), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
 
