@@ -73,8 +73,7 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         #concurrent.futures.wait(tasks)
 
-    def second_pass(self, base: str, root: str,
-                    executor: concurrent.futures.Executor) -> None:
+    def second_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Recursively analyze the contents of a directory.
 
@@ -85,7 +84,16 @@ class SourceAnalyzer():
         """
 
         tasks = []
-        for dirpath, dirnames, filenames in os.walk(root):
+        for dirpath, dirnames, filenames in os.walk("."):
+
+            # skip current directory if it is within the ignore list
+            if dirpath in ignore:
+                # in-place clear dirnames to prevent os.walk from recursing into
+                # any of the nested directories
+                logger.info(f'ignoring directory: {dirpath}')
+                dirnames[:] = []
+                continue
+
             logger.info(f'Processing directory: {dirpath}')
 
             # Process each file in the current directory
@@ -101,9 +109,8 @@ class SourceAnalyzer():
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
-                        relative_path = str(path).replace(base, '')
                         ext = path.suffix
-                        analyzers[ext].second_pass(Path(relative_path), f, self.graph)
+                        analyzers[ext].second_pass(path, f, self.graph)
 
                 task = executor.submit(process_file, file_path)
                 tasks.append(task)
@@ -117,7 +124,7 @@ class SourceAnalyzer():
             self.first_pass(ignore, executor)
 
             # Second pass analysis of the source code
-            #self.second_pass(ignore, executor)
+            self.second_pass(ignore, executor)
 
     def analyze_github_repository(self, url: str) -> None:
         """

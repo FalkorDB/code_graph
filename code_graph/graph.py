@@ -240,7 +240,7 @@ class Graph():
         res = self.g.query(q, params)
         file.id = res.result_set[0][0]
 
-    def delete_files(self, files: List[dict]) -> None:
+    def delete_files(self, files: List[dict], log: bool = False) -> tuple[str, dict]:
         """
         Deletes file(s) from the graph in addition to any other entity
         defined in the file
@@ -260,7 +260,12 @@ class Graph():
         """
 
         params = {'files': files}
-        self.g.query(q, params)
+        res = self.g.query(q, params)
+
+        if log and (res.relationships_deleted > 0 or res.nodes_deleted > 0):
+            return (q, params)
+
+        return None
 
     def get_file(self, path: str, name: str, ext: str) -> Optional[File]:
         """

@@ -104,8 +104,7 @@ def build_commit_graph(path: str):
     repo_name = os.path.split(os.path.normpath(path))[-1]
     g = Graph(repo_name)
 
-    # TODO: need to wait for replication to sync with its master
-    setup_replication()
+    #setup_replication()
 
     # start monitoring graph effects
     # these capture the changes a graph goes through when moving from one
@@ -160,12 +159,15 @@ def build_commit_graph(path: str):
                      'ext' : os.path.splitext(path)[1]} for path in deleted]
 
             # remove deleted files from the graph
-            g.delete_files(deleted_files)
+            q, params = g.delete_files(deleted_files, True)
+            if(q is not None):
+                # log transition action
+
             input("Press Enter to continue...")
 
     # clean up
-    stop_monitor_effects()
-    teardown_replica()
+    #stop_monitor_effects()
+    #teardown_replica()
 
 if __name__ == "__main__":
     build_commit_graph("/Users/roilipman/Dev/FalkorDB")
