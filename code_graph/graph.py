@@ -426,3 +426,23 @@ class Graph():
         s = res.result_set[0][0]
         return self._struct_from_node(s)
 
+    def set_graph_commit(self, commit_hash: str) -> None:
+        """Save processed commit hash to the DB"""
+
+        # connect to DB
+
+        # Set STRING key {FalkorDB}_commit = commit_hash
+        self.db.connection.set('{' + self.g.name + '}' + '_commit', commit_hash)
+
+    def get_graph_commit(self) -> str:
+        """Get the current commit the graph is at"""
+
+        return self.db.connection.get('{' + self.g.name + '}' + '_commit')
+
+
+    def rerun_query(self, q: str, params: dict) -> None:
+        """
+            Re-run a query to transition the graph from one state to another
+        """
+
+        res = self.g.query(q, params)

@@ -155,7 +155,33 @@ class SourceAnalyzer():
 
         logger.info("Done processing repository")
 
-    def analyze_local_repository(self, path: str, ignore: Optional[List[str]]) -> None:
+    def analyze_local_folder(self, path: str, ignore: Optional[List[str]] = []) -> Graph:
+        """
+        Analyze a local folder.
+
+        Args:
+            path (str): Path to a local folder containing source files to process
+            ignore (List(str)): List of paths to skip
+        """
+
+        # change working directory to path
+        os.chdir(path)
+
+        proj_name = os.path.split(os.path.normpath(path))[-1]
+        logger.debug(f'proj_name: {proj_name}')
+
+        # Initialize the graph and analyzer
+        self.graph = Graph(proj_name, self.host, self.port, self.username,
+                           self.password)
+
+        # Analyze source files
+        self.analyze_sources(ignore)
+
+        logger.info("Done processing folder")
+
+        return self.graph
+
+    def analyze_local_repository(self, path: str, ignore: Optional[List[str]] = []) -> Graph:
         """
         Analyze a local Git repository.
 
@@ -164,19 +190,12 @@ class SourceAnalyzer():
             ignore (List(str)): List of paths to skip
         """
 
-        ignore = ignore or []
+        self.analyze_local_folder(path, ignore)
 
-        # change working directory to repo
-        os.chdir(path)
+        # Save processed commit hash to the DB
+        repo = Repo(path)
+        head = repo.commit("HEAD")
+        self.graph.set_graph_commit(head.hexsha)
 
-        repo_name = os.path.split(os.path.normpath(path))[-1]
-        logger.debug(f'repo_name: {repo_name}')
+        return self.graph
 
-        # Initialize the graph and analyzer
-        self.graph = Graph(repo_name, self.host, self.port, self.username,
-                           self.password)
-
-        # Analyze source files
-        self.analyze_sources(ignore)
-
-        logger.info("Done processing repository")

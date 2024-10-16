@@ -258,11 +258,36 @@ def process_git_history():
 
     # path to local repository
     repo = data.get('repo')
-
     if repo is None:
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
-    build_commit_graph(repo)
+    ignore_list = data.get('ignore') or []
+
+    build_commit_graph(repo, ignore_list)
+
+    # Create a response
+    response = {
+        'status': 'success',
+    }
+
+    return jsonify(response), 200
+
+
+@app.route('/switch_commit', methods=['POST'])
+def process_switch_commit():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # path to local repository
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    commit = data.get('commit')
+    if commit is None:
+        return jsonify({'status': f'Missing mandatory parameter "commit"'}), 400
+
+    switch_commit(repo, commit)
 
     # Create a response
     response = {
