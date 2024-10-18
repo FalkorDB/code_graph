@@ -1,6 +1,7 @@
+import time
 from .entities import *
 from typing import List, Optional
-from falkordb import FalkorDB, Node
+from falkordb import FalkorDB, Node, QueryResult
 
 class Graph():
     """
@@ -11,6 +12,12 @@ class Graph():
                  username: Optional[str] = None, password: Optional[str] = None) -> None:
         self.db = FalkorDB(host=host, port=port, username=username,
                            password=password)
+
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+
         self.g = self.db.select_graph(name)
 
         # create indicies
@@ -26,6 +33,35 @@ class Graph():
             self.g.create_node_range_index("File", "path", "name")
         except Exception:
             pass
+
+    def clone(self, clone: str) -> "Graph":
+        """
+        Create a copy of the graph under the name clone
+
+        Returns:
+            a new instance of Graph
+        """
+
+        # Make sure key clone isn't already exists
+        if self.db.connection.exists(clone):
+            raise Exception(f"Can not create clone, key: {clone} already exists.")
+
+        self.g.copy(clone)
+
+        # Wait for the clone to become available
+        while not self.db.connection.exists(clone):
+            # TODO: add a waiting limit
+            time.sleep(1)
+
+        return Graph(clone, self.host, self.port, self.username, self.password)
+
+
+    def delete(self) -> None:
+        """
+        Delete graph
+        """
+        self.g.delete()
+
 
     def add_class(self, c: Class) -> None:
         """
@@ -240,7 +276,7 @@ class Graph():
         res = self.g.query(q, params)
         file.id = res.result_set[0][0]
 
-    def delete_files(self, files: List[dict], log: bool = False) -> tuple[str, dict]:
+    def delete_files(self, files: List[dict], log: bool = False) -> tuple[str, dict, List[int]]:
         """
         Deletes file(s) from the graph in addition to any other entity
         defined in the file
@@ -249,14 +285,16 @@ class Graph():
         files = [{'path':_, 'name': _, 'ext': _}, ...]
         """
 
-        q = """UNWIND $files as file
+        q = """UNWIND $files AS file
                MATCH (f:File {path: file['path'], name: file['name'], ext: file['ext']})
-               CALL {
-                   WITH f
-                   MATCH (f)-[:DEFINES]->(e)
-                   DELETE e
-               }
-               DELETE f
+               WITH collect(f) AS Fs
+               UNWIND Fs AS f
+               MATCH (f)-[:DEFINES]->(e)
+               WITH Fs, collect(e) AS Es
+               WITH Fs + Es AS entities
+               UNWIND entities AS e
+               DELETE e
+               RETURN collect(ID(e))
         """
 
         params = {'files': files}
@@ -440,9 +478,9 @@ class Graph():
         return self.db.connection.get('{' + self.g.name + '}' + '_commit')
 
 
-    def rerun_query(self, q: str, params: dict) -> None:
+    def rerun_query(self, q: str, params: dict) -> QueryResult:
         """
             Re-run a query to transition the graph from one state to another
         """
 
-        res = self.g.query(q, params)
+        return self.g.query(q, params)

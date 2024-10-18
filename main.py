@@ -287,11 +287,12 @@ def process_switch_commit():
     if commit is None:
         return jsonify({'status': f'Missing mandatory parameter "commit"'}), 400
 
-    switch_commit(repo, commit)
+    change_set = switch_commit(repo, commit)
 
     # Create a response
     response = {
         'status': 'success',
+        'change_set': change_set
     }
 
     return jsonify(response), 200

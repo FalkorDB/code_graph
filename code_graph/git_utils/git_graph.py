@@ -94,7 +94,7 @@ class GitGraph():
         self.g.query(q, params)
 
 
-    def get_parent_transition(self, child: str, parent: str) -> List[tuple[str: dict]]:
+    def get_parent_transitions(self, child: str, parent: str) -> List[tuple[str: dict]]:
         """
             Get queries and parameters transitioning from child commit to parent commit
         """
@@ -112,9 +112,9 @@ class GitGraph():
         return (res[0][0], res[0][1])
 
 
-    def get_child_transition(self, child: str, parent: str) -> List[tuple[str: dict]]:
+    def get_child_transitions(self, child: str, parent: str) -> List[tuple[str: dict]]:
         """
-            Get queries transitioning from parent to child
+            Get queries and parameters transitioning from parent commit to child commit
         """
         q = """MATCH path = (:Commit {hash: $parent_hash})-[:CHILD*]->(:Commit {hash: $child_hash})
                WITH path

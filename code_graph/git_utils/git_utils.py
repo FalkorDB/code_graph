@@ -2,6 +2,7 @@ import os
 import time
 import json
 import redis
+import logging
 import threading
 import subprocess
 from git import Repo
@@ -9,9 +10,15 @@ from ..graph import Graph
 from .git_graph import GitGraph
 from typing import List, Optional
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 monitor_thread = None
 replica_process = None
 monitor_exit_event = threading.Event()
+
+def GitRepoName(repo_name):
+    return "{" + repo_name + "}_git"
 
 # setup replication to the master
 def setup_replication():
@@ -108,8 +115,10 @@ def build_commit_graph(path: str, ignore_list: Optional[List[str]] = []) -> GitG
     repo = Repo(path)
 
     repo_name = os.path.split(os.path.normpath(path))[-1]
-    g =         Graph(repo_name)
-    git_graph = GitGraph('{' + repo_name + '}' + '_git')
+
+    # Clone graph into a temporary graph
+    g =         Graph(repo_name).clone(repo_name + "_tmp")
+    git_graph = GitGraph(GitRepoName(repo_name))
 
     #setup_replication()
 
@@ -194,46 +203,111 @@ def build_commit_graph(path: str, ignore_list: Optional[List[str]] = []) -> GitG
     #stop_monitor_effects()
     #teardown_replica()
 
+    # Delete temporaty graph
+    g.delete()
+
     return git_graph
 
-def switch_commit(repo: str, to: str):
-    """switch graph state from its current commit to given commit"""
+def switch_commit(repo: str, to: str) -> dict[str, dict[str, list]]:
+    """
+    Switches the state of a graph repository from its current commit to the given commit.
 
+    This function handles switching between two git commits for a graph-based repository.
+    It identifies the changes (additions, deletions, modifications) in nodes and edges between
+    the current commit and the target commit and then applies the necessary transitions.
+
+    Args:
+        repo (str): The name of the graph repository to switch commits.
+        to (str): The target commit hash to switch the graph to.
+
+    Returns:
+        dict: A dictionary containing the changes made during the commit switch, organized by:
+            - 'deletions': {
+                'nodes': List of node IDs deleted,
+                'edges': List of edge IDs deleted
+            },
+            - 'additions': {
+                'nodes': List of new Node objects added,
+                'edges': List of new Edge objects added
+            },
+            - 'modifications': {
+                'nodes': List of modified Node objects,
+                'edges': List of modified Edge objects
+            }
+    """
+
+    # Validate input arguments
+    if not repo or not isinstance(repo, str):
+        raise ValueError("Invalid repository name")
+
+    if not to or not isinstance(to, str):
+        raise ValueError("Invalid desired commit value")
+
+    # Initialize return value to an empty change set
+    change_set = {
+        'deletions': {
+            'nodes': [],
+            'edges': []
+        },
+        'additions': {
+            'nodes': [],
+            'edges': [],
+        },
+        'modifications': {
+            'nodes': [],
+            'edges': []
+        }
+    }
+
+    # Initialize the graph and GitGraph objects
     g = Graph(repo)
-    git_graph = GitGraph('{' + repo + '}' + 'git')
+    git_graph = GitGraph(GitRepoName(repo))
 
-    # Get the graph's current commit
+    # Get the current commit hash of the graph
     current_hash = g.get_graph_commit()
+    logging.info(f"Current graph commit: {current_hash}")
 
-    # Find path from current commit to desired commit
+    if current_hash == to:
+        # No change remain at the current commit
+        return change_set
+
+    # Find the path between the current commit and the desired commit
     commits = git_graph.get_commits([current_hash, to])
 
+    # Ensure both current and target commits are present
     if len(commits) != 2:
-        print("missing commits")
-        return
+        logging.error("Missing commits. Unable to proceed.")
+        raise ValueError("Commits not found")
 
-    # determine relation between commits
-    current_commit = commits[0] if commits[0]['hash'] == current_hash else commits[1]
-    new_commit     = commits[0] if commits[0]['hash'] == to else commits[1]
+    # Identify the current and new commits based on their hashes
+    current_commit, new_commit = (commits if commits[0]['hash'] == current_hash else reversed(commits))
 
+    # Determine the direction of the switch (forward or backward in commit history)
     if current_commit['date'] > new_commit['date']:
-        print("moving backwared")
-        queries, params = git_graph.get_parent_transition(current_commit['hash'], new_commit['hash'])
+        logging.info(f"Moving backward from {current_commit['hash']} to {new_commit['hash']}")
+        # Get the transitions (queries and parameters) for moving backward
+        queries, params = git_graph.get_parent_transitions(current_commit['hash'], new_commit['hash'])
     else:
-        print("moving forwards")
-        queries, params = git_graph.get_child_transition(current_commit['hash'], new_commit['hash'])
+        logging.info(f"Moving forward from {current_commit['hash']} to {new_commit['hash']}")
+        # Get the transitions (queries and parameters) for moving forward
+        queries, params = git_graph.get_child_transitions(current_commit['hash'], new_commit['hash'])
 
-    # Apply transitions
-    for i in range(0, len(queries)):
-        q = queries[i]
-        p = json.loads(params[i])
-        print(f"query: {q}")
-        print(f"params: {p}")
+    # Apply each transition query with its respective parameters
+    for q, p in zip(queries, params):
+        p = json.loads(p)
+        logging.debug(f"Executing query: {q} with params: {p}")
 
-        g.rerun_query(q, p)
+        # Rerun the query with parameters on the graph
+        res = g.rerun_query(q, p)
+        if "DELETE" in q:
+            deleted_nodes = res.result_set[0][0]
+            change_set['deletions']['nodes'] += deleted_nodes
 
-    # update graph's commit
+    # Update the graph's commit to the new target commit
     g.set_graph_commit(to)
+    logging.info(f"Graph commit updated to {to}")
+
+    return change_set
 
 if __name__ == "__main__":
     build_commit_graph("/Users/roilipman/Dev/FalkorDB")
