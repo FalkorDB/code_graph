@@ -17,7 +17,6 @@ def list_repos() -> List[str]:
                   username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
 
     graphs = db.list_graphs()
-    print(f"graphs: {graphs}")
     graphs = [g for g in graphs if not g.endswith('_git')]
     return graphs
 

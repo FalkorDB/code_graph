@@ -1,4 +1,4 @@
-from falkordb import FalkorDB
+from falkordb import FalkorDB, Node
 from typing import List, Optional
 
 class GitGraph():
@@ -23,6 +23,15 @@ class GitGraph():
         except Exception:
             pass
 
+    def _commit_from_node(self, node:Node) -> dict:
+        """
+            Returns a dict representing a commit node
+        """
+
+        return {'hash':    node.properties['hash'],
+                'date':    node.properties['date'],
+                'author':  node.properties['author'],
+                'message': node.properties['message']}
 
     def add_commit(self, commit_hash: str, author: str, message: str, date: int) -> None:
         """
@@ -31,6 +40,16 @@ class GitGraph():
         q = "MERGE (c:Commit {hash: $hash, author: $author, message: $message, date: $date})"
         params = {'hash': commit_hash, 'author': author, 'message': message, 'date': date}
         self.g.query(q, params)
+
+    def list_commits(self) -> List[Node]:
+        """
+        List all commits
+        """
+
+        q = "MATCH (c:Commit) RETURN c ORDER BY c.date"
+        result_set = self.g.query(q).result_set
+
+        return [self._commit_from_node(row[0]) for row in result_set]
 
     def get_commits(self, hashes: List[str]) -> List[dict]:
         q = """MATCH (c:Commit)
@@ -42,12 +61,7 @@ class GitGraph():
 
         commits = []
         for row in res:
-            commit = row[0]
-            commit = {'hash':    commit.properties['hash'],
-                      'date':    commit.properties['date'],
-                      'author':  commit.properties['author'],
-                      'message': commit.properties['message']}
-
+            commit = self._commit_from_node(row[0])
             commits.append(commit)
 
         return commits

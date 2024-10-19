@@ -288,11 +288,9 @@ def process_auto_complete():
 
 @app.route('/list_repos', methods=['GET'])
 def process_list_repos():
-    print("Hello!")
     # Get JSON data from the request
 
     repos = list_repos()
-    print(f"repos: {repos}")
 
     # Create a response
     response = {
@@ -302,6 +300,30 @@ def process_list_repos():
 
     return jsonify(response), 200
 
+
+@app.route('/list_commits', methods=['POST'])
+def process_list_commits():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # name of repository
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    # Get JSON data from the request
+    git_graph = GitGraph(GitRepoName(repo), host=FALKORDB_HOST, port=FALKORDB_PORT,
+                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+
+    commits = git_graph.list_commits()
+
+    # Create a response
+    response = {
+        'status': 'success',
+        'commits': commits
+    }
+
+    return jsonify(response), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
