@@ -3,6 +3,24 @@ from .entities import *
 from typing import List, Optional
 from falkordb import FalkorDB, Node, QueryResult
 
+FALKORDB_HOST     = "localhost"
+FALKORDB_PORT     = 6379
+FALKORDB_USERNAME = None
+FALKORDB_PASSWORD = None
+
+def list_repos() -> List[str]:
+    """
+        List processed repositories
+    """
+
+    db = FalkorDB(host=FALKORDB_HOST, port=FALKORDB_PORT,
+                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+
+    graphs = db.list_graphs()
+    print(f"graphs: {graphs}")
+    graphs = [g for g in graphs if not g.endswith('_git')]
+    return graphs
+
 class Graph():
     """
     Represents a connection to a graph database using FalkorDB.
@@ -31,6 +49,12 @@ class Graph():
         # index Function
         try:
             self.g.create_node_range_index("File", "path", "name")
+        except Exception:
+            pass
+
+        # index Function using full-text search
+        try:
+            self.g.create_node_fulltext_index("Searchable", "name")
         except Exception:
             pass
 
@@ -71,7 +95,7 @@ class Graph():
             c (Class): The Class object to be added.
         """
 
-        q = """MERGE (c:Class {name: $name, path: $path, src_start: $src_start,
+        q = """MERGE (c:Class:Searchable {name: $name, path: $path, src_start: $src_start,
                                src_end: $src_end})
                SET c.doc = $doc
                RETURN ID(c)"""
@@ -133,7 +157,7 @@ class Graph():
             func (Function): The Function object to be added.
         """
 
-        q = """MERGE (f:Function {path: $path, name: $name,
+        q = """MERGE (f:Function:Searchable {path: $path, name: $name,
                                   src_start: $src_start, src_end: $src_end})
                SET f.args = $args, f.ret_type = $ret_type, f.src = $src, f.doc = $doc
                RETURN ID(f)"""
@@ -150,7 +174,6 @@ class Graph():
             'args': args,
             'ret_type': func.ret_type
         }
-
 
         res = self.g.query(q, params)
         func.id = res.result_set[0][0]
@@ -215,6 +238,53 @@ class Graph():
 
         return self._function_from_node(res[0][0])
 
+    def prefix_search(self, prefix: str) -> str:
+        """
+        Search for entities by prefix using a full-text search on the graph.
+        The search is limited to 10 nodes. Each node's name and labels are retrieved,
+        and the results are sorted based on their labels.
+
+        Args:
+            prefix (str): The prefix string to search for in the graph database.
+
+        Returns:
+            str: A list of entity names and corresponding labels, sorted by label.
+                 If no results are found or an error occurs, an empty list is returned.
+        """
+
+        # Append a wildcard '*' to the prefix for full-text search.
+        search_prefix = f"{prefix}*"
+
+        # Cypher query to perform full-text search and limit the result to 10 nodes.
+        # The 'CALL db.idx.fulltext.queryNodes' method searches for nodes labeled 'Searchable'
+        # that match the given prefix, collects the nodes, and returns the result.
+        query = """
+            CALL db.idx.fulltext.queryNodes('Searchable', $prefix)
+            YIELD node
+            WITH node
+            LIMIT 10
+            RETURN collect(node)
+        """
+
+        try:
+            # Execute the query using the provided graph database connection.
+            completions = self.g.query(query, {'prefix': search_prefix}).result_set[0][0]
+
+            # Remove label Searchable from each node
+            for node in completions:
+                node.labels.remove('Searchable')
+
+            # Sort the results by the label for better organization.
+            completions = sorted(completions, key=lambda x: x.labels)
+
+            return completions
+
+        except Exception as e:
+            # Log any errors encountered during the search and return an empty list.
+            logging.error(f"Error while searching for entities with prefix '{prefix}': {e}")
+            return []
+
+
     def get_function(self, func_id: int) -> Optional[Function]:
         q = """MATCH (f:Function)
                WHERE ID(f) = $func_id
@@ -269,7 +339,7 @@ class Graph():
             file_ext (str): Extension of the file.
         """
 
-        q = """MERGE (f:File {path: $path, name: $name, ext: $ext})
+        q = """MERGE (f:File:Searchable {path: $path, name: $name, ext: $ext})
                RETURN ID(f)"""
         params = {'path': file.path, 'name': file.name, 'ext': file.ext}
 
@@ -400,7 +470,7 @@ class Graph():
             s (Struct): The Struct object to be added.
         """
 
-        q = """MERGE (s:Struct {name: $name, path: $path, src_start: $src_start,
+        q = """MERGE (s:Struct:Searchable {name: $name, path: $path, src_start: $src_start,
                                src_end: $src_end})
                SET s.doc = $doc, s.fields = $fields
                RETURN ID(s)"""
@@ -484,3 +554,4 @@ class Graph():
         """
 
         return self.g.query(q, params)
+

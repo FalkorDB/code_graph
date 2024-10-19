@@ -32,41 +32,6 @@ def extract_org_name_from_url(url: str) -> Optional[tuple[str, str]]:
     
     return (components[n-2], components[n-1])
 
-def get_current_head_commit_hash(repo_url: str) -> str:
-    import git
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        repo = git.Repo.clone_from(repo_url, temp_dir)
-        commit_hash = repo.head.commit.hexsha
-    return commit_hash
-
-def save_repository_metadata(repo_url: str, repo_name: str):
-    r = redis.Redis(host=FALKORDB_HOST, port=FALKORDB_PORT,
-                    username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD,
-                    decode_responses=True)
-
-    key = f'{repo_name}_metadata'
-    metadata = {
-            'repo_url': repo_url,
-            'repo_name': repo_name,
-            'date_create': str(datetime.datetime.today().replace(microsecond=0)),
-            'commit': get_current_head_commit_hash(repo_url)}
-
-    r.hset(key, mapping=metadata)
-
-@app.route('/list_repos', methods=['GET'])
-def list_repos():
-    r = redis.Redis(host=FALKORDB_HOST, port=FALKORDB_PORT,
-                    username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD,
-                    decode_responses=True)
-    keys = r.keys('*_metadata')[:20]
-
-    repos = []
-    for key in keys:
-        repos.append(r.hgetall(key))
-
-    return jsonify({'repos': repos}), 200
-
 @app.route('/graph_entities', methods=['GET'])
 def graph_entities():
     # Access the 'graph_id' parameter from the GET request
@@ -296,6 +261,47 @@ def process_switch_commit():
     }
 
     return jsonify(response), 200
+
+@app.route('/auto_complete', methods=['POST'])
+def process_auto_complete():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # path to local repository
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    prefix = data.get('prefix')
+    if prefix is None:
+        return jsonify({'status': f'Missing mandatory parameter "prefix"'}), 400
+
+    completions = auto_complete(repo, prefix)
+    # Create a response
+    response = {
+        'status': 'success',
+        'completions': completions
+    }
+
+    return jsonify(response), 200
+
+
+@app.route('/list_repos', methods=['GET'])
+def process_list_repos():
+    print("Hello!")
+    # Get JSON data from the request
+
+    repos = list_repos()
+    print(f"repos: {repos}")
+
+    # Create a response
+    response = {
+        'status': 'success',
+        'repositories': repos
+    }
+
+    return jsonify(response), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
