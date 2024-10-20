@@ -1,6 +1,6 @@
 import time
 from .entities import *
-from typing import List, Optional
+from typing import Dict, List, Optional
 from falkordb import FalkorDB, Path, Node, QueryResult
 
 FALKORDB_HOST     = "localhost"
@@ -108,6 +108,54 @@ class Graph():
                 sub_graph['nodes'].append(encode_node(dest))
 
         return sub_graph
+
+
+    def get_neighbors(self, node_id: int, rel: Optional[str] = None, lbl: Optional[str] = None) -> Dict[str, List[dict]]:
+        """
+        Fetch the neighbors of a given node in the graph based on relationship type and/or label.
+
+        Args:
+            node_id (int): The ID of the source node.
+            rel (str, optional): The type of relationship to filter by. Defaults to None.
+            lbl (str, optional): The label of the destination node to filter by. Defaults to None.
+
+        Returns:
+            dict: A dictionary with lists of 'nodes' and 'edges' for the neighbors.
+        """
+
+        # Validate inputs
+        if not isinstance(node_id, int):
+            raise ValueError("node_id must be an integer")
+
+        # Build relationship and label query parts
+        rel_query = f":{rel}" if rel else ""
+        lbl_query = f":{lbl}" if lbl else ""
+
+        # Parameterized Cypher query to find neighbors
+        query = f"""
+            MATCH (n)-[e{rel_query}]->(dest{lbl_query})
+            WHERE ID(n) = $node_id
+            RETURN e, dest
+        """
+
+        # Initialize the neighbors structure
+        neighbors = {'nodes': [], 'edges': []}
+
+        try:
+            # Execute the graph query with node_id parameter
+            result_set = self.g.query(query, {'node_id': node_id}).result_set
+
+            # Iterate over the result set and process nodes and edges
+            for edge, destination_node in result_set:
+                neighbors['nodes'].append(encode_node(destination_node))
+                neighbors['edges'].append(encode_edge(edge))
+
+            return neighbors
+
+        except Exception as e:
+            logging.error(f"Error fetching neighbors for node {node_id}: {e}")
+            return {'nodes': [], 'edges': []}
+
 
     def add_class(self, c: Class) -> None:
         """

@@ -4,14 +4,18 @@ import datetime
 from code_graph import *
 from typing import Optional
 from falkordb import FalkorDB
+from dotenv import load_dotenv
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify, abort
 
-# Configuration
-FALKORDB_HOST     = 'localhost'
-FALKORDB_PORT     = 6379
-FALKORDB_USERNAME = None
-FALKORDB_PASSWORD = None
+# Load environment variables from .env file
+load_dotenv()
+
+# Access environment variables
+FALKORDB_HOST = os.getenv('FALKORDB_HOST')
+FALKORDB_PORT = os.getenv('FALKORDB_PORT')
+FALKORDB_USERNAME = os.getenv('FALKORDB_USERNAME')
+FALKORDB_PASSWORD = os.getenv('FALKORDB_PASSWORD')
 
 app = Flask(__name__, static_folder='static')
 
@@ -34,50 +38,77 @@ def extract_org_name_from_url(url: str) -> Optional[tuple[str, str]]:
 
 @app.route('/graph_entities', methods=['GET'])
 def graph_entities():
+    """
+    Endpoint to fetch sub-graph entities from a given repository.
+    The repository is specified via the 'repo' query parameter.
+
+    Returns:
+        - 200: Successfully returns the sub-graph.
+        - 400: Missing or invalid 'repo' parameter.
+        - 500: Internal server error or database connection issue.
+    """
+
     # Access the 'repo' parameter from the GET request
     repo = request.args.get('repo')
 
-    g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
-                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+    if not repo:
+        logging.error("Missing 'repo' parameter in request.")
+        return jsonify({"error": "Missing 'repo' parameter"}), 400
 
-    sub_graph = g.get_sub_graph(100)
+    try:
+        # Initialize the graph with the provided repo and credentials
+        g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
+                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
 
-    return jsonify(sub_graph), 200
+        # Retrieve a sub-graph of up to 100 entities
+        sub_graph = g.get_sub_graph(100)
+
+        logging.info(f"Successfully retrieved sub-graph for repo: {repo}")
+        return jsonify(sub_graph), 200
+
+    except Exception as e:
+        logging.error(f"Error retrieving sub-graph for repo '{repo}': {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/get_neighbors', methods=['GET'])
 def get_neighbors():
-    # Access the 'node_id' parameter from the GET request
-    node_id  = int(request.args.get('node_id'))
-    graph_id = request.args.get('graph_id')
+    """
+    Endpoint to get neighbors of a specific node in the graph.
+    Expects 'repo' and 'node_id' as query parameters.
+    """
+    repo = request.args.get('repo')
+    node_id = request.args.get('node_id')
 
-    # Connect to FalkorDB
-    db = FalkorDB(host=FALKORDB_HOST, port=FALKORDB_PORT,
+    if not repo:
+        logging.error("Repository name is missing in the request.")
+        return jsonify({"error": "Repository name is required."}), 400
+
+    if not node_id:
+        logging.error("Node ID is missing in the request.")
+        return jsonify({"error": "Node ID is required."}), 400
+
+    try:
+        # Validate and convert node_id to integer
+        node_id = int(node_id)
+    except ValueError:
+        logging.error(f"Invalid node ID: {node_id}. It must be an integer.")
+        return jsonify({"error": "Invalid node ID. It must be an integer."}), 400
+
+    try:
+        # Initialize the graph with the provided repo and credentials
+        g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
                   username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
 
-    # Select graph
-    g = db.select_graph(graph_id)
+        # Get neighbors of the given node
+        neighbors = g.get_neighbors(node_id)
 
-    query = """MATCH (n)
-               WHERE ID(n) = $node_id
-               MATCH (n)-[e]-(neighbor)
-               RETURN neighbor, e"""
+        logging.info(f"Successfully retrieved neighbors for node ID {node_id} in repo '{repo}'.")
+        return jsonify(neighbors), 200
 
-    data = []
-    res = g.query(query, {'node_id': node_id}).result_set
-    for row in res:
-        neighbor = row[0]
-        e        = row[1]
+    except Exception as e:
+        logging.error(f"Error retrieving node neighbors for repo '{repo}': {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
-        data.append({'data': {'id': neighbor.id,
-                              'label': neighbor.labels[0]} })
-        data.append({'data': {'source': node_id, 'target': neighbor.id, 'relation': e.relation} })
-
-    # [
-    #   { data: { id: 'e' } },
-    #   { data: { source: 'a', target: 'b' } }
-    # ]
-
-    return jsonify(data), 200
 
 @app.route('/process_repo', methods=['POST'])
 def process_repo():
