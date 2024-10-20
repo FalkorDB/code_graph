@@ -1,7 +1,7 @@
 import time
 from .entities import *
 from typing import List, Optional
-from falkordb import FalkorDB, Node, QueryResult
+from falkordb import FalkorDB, Path, Node, QueryResult
 
 FALKORDB_HOST     = "localhost"
 FALKORDB_PORT     = 6379
@@ -85,6 +85,29 @@ class Graph():
         """
         self.g.delete()
 
+
+    def get_sub_graph(self, l: int) -> dict:
+
+        q = """MATCH (src)
+                   OPTIONAL MATCH (src)-[e]->(dest)
+                   RETURN src, e, dest
+                   LIMIT $limit"""
+
+        sub_graph = {'nodes': [], 'edges': [] }
+
+        result_set = self.g.query(q, {'limit': l}).result_set
+        for row in result_set:
+            src  = row[0]
+            e    = row[1]
+            dest = row[2]
+
+            sub_graph['nodes'].append(encode_node(src))
+
+            if e is not None:
+                sub_graph['edges'].append(encode_edge(e))
+                sub_graph['nodes'].append(encode_node(dest))
+
+        return sub_graph
 
     def add_class(self, c: Class) -> None:
         """
@@ -553,4 +576,39 @@ class Graph():
         """
 
         return self.g.query(q, params)
+
+    def find_paths(self, src: int, dest: int) -> List[Path]:
+        """
+        Find all paths between the source (src) and destination (dest) nodes.
+
+        Args:
+            src (int): The ID of the source node.
+            dest (int): The ID of the destination node.
+
+        Returns:
+            List[Optional[Path]]: A list of paths found between the src and dest nodes.
+            Returns an empty list if no paths are found.
+
+        Raises:
+            Exception: If the query fails or the graph database returns an error.
+        """
+
+        # Define the query to match paths between src and dest nodes.
+        q = """MATCH (src), (dest)
+               WHERE ID(src) = $src_id AND ID(dest) = $dest_id
+               WITH src, dest
+               MATCH p = (src)-[:CALLS*]->(dest)
+               RETURN p
+           """
+
+        # Perform the query with the source and destination node IDs.
+        result_set = self.g.query(q, {'src_id': src, 'dest_id': dest}).result_set
+
+        paths = []
+
+        # Extract paths from the query result set.
+        for row in result_set:
+            paths.append(row[0])
+
+        return paths
 

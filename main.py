@@ -34,42 +34,15 @@ def extract_org_name_from_url(url: str) -> Optional[tuple[str, str]]:
 
 @app.route('/graph_entities', methods=['GET'])
 def graph_entities():
-    # Access the 'graph_id' parameter from the GET request
-    graph_id = request.args.get('graph_id')
+    # Access the 'repo' parameter from the GET request
+    repo = request.args.get('repo')
 
-    # Connect to FalkorDB
-    db = FalkorDB(host=FALKORDB_HOST, port=FALKORDB_PORT,
-                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+    g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
+                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
 
-    # Select graph
-    g = db.select_graph(graph_id)
+    sub_graph = g.get_sub_graph(100)
 
-    query = """MATCH (src)
-               OPTIONAL MATCH (src)-[e]->(dest)
-               RETURN src, e, dest
-               LIMIT 100"""
-
-    data = []
-    res = g.query(query).result_set
-    for row in res:
-        src  = row[0]
-        e    = row[1]
-        dest = row[2]
-
-        data.append({'data': {'id': src.id,
-                              'label': src.labels[0]} })
-
-        if e is not None:
-            data.append({'data': {'id': dest.id,
-                                  'label': dest.labels[0]} })
-            data.append({'data': {'source': src.id, 'target': dest.id, 'relation': e.relation} })
-
-    # [
-    #   { data: { id: 'e' } },
-    #   { data: { source: 'a', target: 'b' } }
-    # ]
-
-    return jsonify(data), 200
+    return jsonify(sub_graph), 200
 
 @app.route('/get_neighbors', methods=['GET'])
 def get_neighbors():
@@ -324,6 +297,41 @@ def process_list_commits():
     }
 
     return jsonify(response), 200
+
+@app.route('/find_paths', methods=['POST'])
+def find_paths():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # name of repository
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    # source ID
+    src = data.get('src')
+    if src is None:
+        return jsonify({'status': f'Missing mandatory parameter "src"'}), 400
+
+    # dest ID
+    dest = data.get('dest')
+    if dest is None:
+        return jsonify({'status': f'Missing mandatory parameter "dest"'}), 400
+
+    # Get JSON data from the request
+    g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
+                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+
+    paths = g.find_paths(src, dest)
+
+    # Create a response
+    response = {
+        'status': 'success',
+        'paths': paths
+    }
+
+    return jsonify(response), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
