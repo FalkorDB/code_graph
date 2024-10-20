@@ -112,47 +112,55 @@ def get_neighbors():
 
 @app.route('/process_repo', methods=['POST'])
 def process_repo():
-    # Get JSON data from the request
-    data = request.get_json()
+    """
+    Process a GitHub repository.
 
-    # Process the data
+    Expected JSON payload:
+    {
+        "repo_url": "string",
+        "ignore": ["string"]  # optional
+    }
+
+    Returns:
+        JSON response with processing status
+    """
+
+    data = request.get_json()
     repo_url = data.get('repo_url')
     if repo_url is None:
         return jsonify({'status': f'Missing mandatory parameter "repo_url"'}), 400
     logger.debug(f'Received repo_url: {repo_url}')
 
-    # Validate URL
+    ignore = data.get('ignore', [])
+
+    # Validate and normalize URL
     try:
         urlparse(repo_url)
     except ValueError:
         return jsonify({'status': 'Invalid repository URL'}), 400
 
-    # Extract Organization and Repo name from URL
-    res = extract_org_name_from_url(repo_url)
-    if res is None:
-        return jsonify({'status': f'Failed to process repo_url: {repo_url}'}), 400
-
-    org, name = extract_org_name_from_url(repo_url)
-    logger.debug(f'Org: {org}, name: {name}')
-
     # Convert repo_url to git URL
     git_url = repo_url + '.git'
-    logger.debug(f'git_url: {git_url}')
+    parsed_url = urlparse(git_url)
+    logging.debug(f"Processing git URL: {git_url}")
+
+    repo_name = parsed_url.path.rstrip('.git').split('/')[-1]
+    if not repo_name:
+        raise ValueError(f"Could not extract repository name from URL: {url}")
+
+    base_path = Path("./repositories")
+    repo_path = base_path / repo_name
+    logging.debug(f"Repository name: {repo_name}")
 
     # Create source code analyzer
-    analyzer = SourceAnalyzer(host     = FALKORDB_HOST,
-                              port     = FALKORDB_PORT,
-                              username = FALKORDB_USERNAME,
-                              password = FALKORDB_PASSWORD)
+    analyzer = SourceAnalyzer()
 
     try:
-        analyzer.analyze_repository(git_url)
+        analyzer.analyze_github_repository(git_url, repo_path, repo_name, ignore)
+        build_commit_graph(repo_path, repo_name, ignore)
     except Exception as e:
         logger.error(f'An error occurred: {e}')
         return jsonify({'status': f'Failed to process repository: {git_url}'}), 400
-
-    repo_name = f'{org}/{name}'
-    save_repository_metadata(git_url, repo_name)
 
     # Create a response
     response = {

@@ -108,13 +108,8 @@ def stop_monitor_effects():
     print("monitor thread exited")
 
 # build a graph capturing the git commit history
-def build_commit_graph(path: str, ignore_list: Optional[List[str]] = []) -> GitGraph:
-    print(f"Processing git history at: {path}")
-    print(f"ignoring the following paths: {ignore_list}")
-
+def build_commit_graph(path: str, repo_name: str, ignore_list: Optional[List[str]] = []) -> GitGraph:
     repo = Repo(path)
-
-    repo_name = os.path.split(os.path.normpath(path))[-1]
 
     # Clone graph into a temporary graph
     g =         Graph(repo_name).clone(repo_name + "_tmp")
