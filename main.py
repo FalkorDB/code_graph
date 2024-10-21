@@ -330,10 +330,10 @@ def process_list_commits():
     return jsonify(response), 200
 
 
-@app.route('/repo_stats', methods=['POST'])
-def repo_stats():
+@app.route('/repo_info', methods=['POST'])
+def repo_info():
     """
-    Endpoint to retrieve statistics about a specific repository.
+    Endpoint to retrieve information about a specific repository.
 
     Expected JSON payload:
         {
@@ -343,7 +343,7 @@ def repo_stats():
     Returns:
         JSON: A response containing the status and graph statistics (node and edge counts).
             - 'status': 'success' if successful, or an error message.
-            - 'stats': A dictionary with the node and edge counts if the request is successful.
+            - 'info': A dictionary with the node and edge counts if the request is successful.
     """
 
     # Get JSON data from the request
@@ -363,7 +363,7 @@ def repo_stats():
     # Create a response
     response = {
         'status': 'success',
-        'stats': stats
+        'info': stats
     }
 
     return jsonify(response), 200
