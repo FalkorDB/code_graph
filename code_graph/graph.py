@@ -654,3 +654,22 @@ class Graph():
 
         return paths
 
+    def stats(self) -> dict:
+        """
+        Retrieve statistics about the graph, including the number of nodes and edges.
+
+        Returns:
+            dict: A dictionary containing:
+                - 'node_count' (int): The total number of nodes in the graph.
+                - 'edge_count' (int): The total number of edges in the graph.
+        """
+
+        q = "MATCH (n) RETURN count(n)"
+        node_count = self.g.query(q).result_set[0][0]
+
+        q = "MATCH ()-[e]->() RETURN count(e)"
+        edge_count = self.g.query(q).result_set[0][0]
+
+        # Return the statistics
+        return {'node_count': node_count, 'edge_count': edge_count}
+

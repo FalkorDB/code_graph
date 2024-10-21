@@ -329,6 +329,45 @@ def process_list_commits():
 
     return jsonify(response), 200
 
+
+@app.route('/repo_stats', methods=['POST'])
+def repo_stats():
+    """
+    Endpoint to retrieve statistics about a specific repository.
+
+    Expected JSON payload:
+        {
+            "repo": <repository name>
+        }
+
+    Returns:
+        JSON: A response containing the status and graph statistics (node and edge counts).
+            - 'status': 'success' if successful, or an error message.
+            - 'stats': A dictionary with the node and edge counts if the request is successful.
+    """
+
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # Validate the 'repo' parameter
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    # Initialize the graph with the provided repository name
+    g = Graph(repo)
+
+    # Retrieve statistics from the graph
+    stats = g.stats()
+
+    # Create a response
+    response = {
+        'status': 'success',
+        'stats': stats
+    }
+
+    return jsonify(response), 200
+
 @app.route('/find_paths', methods=['POST'])
 def find_paths():
     """
