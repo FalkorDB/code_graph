@@ -1,3 +1,4 @@
+import os
 from falkordb import FalkorDB, Node
 from typing import List, Optional
 
@@ -9,11 +10,13 @@ class GitGraph():
     from the current commit to parent / child
     """
 
-    def __init__(self, name: str, host: str = 'localhost', port: int = 6379,
-                 username: Optional[str] = None, password: Optional[str] = None):
+    def __init__(self, name: str):
 
-        self.db = FalkorDB(host=host, port=port, username=username,
-                           password=password)
+        self.db = FalkorDB(host=os.getenv('FALKORDB_HOST'),
+                           port=os.getenv('FALKORDB_PORT'),
+                           username=os.getenv('FALKORDB_USERNAME'),
+                           password=os.getenv('FALKORDB_PASSWORD'))
+
         self.g = self.db.select_graph(name)
 
         # create indicies

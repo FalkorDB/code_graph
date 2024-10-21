@@ -1,20 +1,18 @@
+import os
 import time
 from .entities import *
 from typing import Dict, List, Optional
 from falkordb import FalkorDB, Path, Node, QueryResult
-
-FALKORDB_HOST     = "localhost"
-FALKORDB_PORT     = 6379
-FALKORDB_USERNAME = None
-FALKORDB_PASSWORD = None
 
 def list_repos() -> List[str]:
     """
         List processed repositories
     """
 
-    db = FalkorDB(host=FALKORDB_HOST, port=FALKORDB_PORT,
-                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+    db = FalkorDB(host=os.getenv('FALKORDB_HOST'),
+                  port=os.getenv('FALKORDB_PORT'),
+                  username=os.getenv('FALKORDB_USERNAME'),
+                  password=os.getenv('FALKORDB_PASSWORD'))
 
     graphs = db.list_graphs()
     graphs = [g for g in graphs if not g.endswith('_git')]
@@ -25,17 +23,13 @@ class Graph():
     Represents a connection to a graph database using FalkorDB.
     """
 
-    def __init__(self, name: str, host: str = 'localhost', port: int = 6379,
-                 username: Optional[str] = None, password: Optional[str] = None) -> None:
-        self.db = FalkorDB(host=host, port=port, username=username,
-                           password=password)
-
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-
-        self.g = self.db.select_graph(name)
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.db   = FalkorDB(host=os.getenv('FALKORDB_HOST'),
+                             port=os.getenv('FALKORDB_PORT'),
+                             username=os.getenv('FALKORDB_USERNAME'),
+                             password=os.getenv('FALKORDB_PASSWORD'))
+        self.g    = self.db.select_graph(name)
 
         # create indicies
 
@@ -76,7 +70,7 @@ class Graph():
             # TODO: add a waiting limit
             time.sleep(1)
 
-        return Graph(clone, self.host, self.port, self.username, self.password)
+        return Graph(clone)
 
 
     def delete(self) -> None:

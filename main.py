@@ -12,11 +12,6 @@ from flask import Flask, request, jsonify, abort
 load_dotenv()
 
 # Access environment variables
-FALKORDB_HOST = os.getenv('FALKORDB_HOST')
-FALKORDB_PORT = os.getenv('FALKORDB_PORT')
-FALKORDB_USERNAME = os.getenv('FALKORDB_USERNAME')
-FALKORDB_PASSWORD = os.getenv('FALKORDB_PASSWORD')
-
 app = Flask(__name__, static_folder='static')
 
 # Configure the logger
@@ -57,8 +52,7 @@ def graph_entities():
 
     try:
         # Initialize the graph with the provided repo and credentials
-        g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
-                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+        g = Graph(repo)
 
         # Retrieve a sub-graph of up to 100 entities
         sub_graph = g.get_sub_graph(100)
@@ -96,8 +90,7 @@ def get_neighbors():
 
     try:
         # Initialize the graph with the provided repo and credentials
-        g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
-                  username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+        g = Graph(repo)
 
         # Get neighbors of the given node
         neighbors = g.get_neighbors(node_id)
@@ -324,8 +317,7 @@ def process_list_commits():
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
     # Get JSON data from the request
-    git_graph = GitGraph(GitRepoName(repo), host=FALKORDB_HOST, port=FALKORDB_PORT,
-                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+    git_graph = GitGraph(GitRepoName(repo))
 
     commits = git_graph.list_commits()
 
@@ -339,35 +331,47 @@ def process_list_commits():
 
 @app.route('/find_paths', methods=['POST'])
 def find_paths():
+    """
+    Finds all paths between a source node (src) and a destination node (dest) in the graph.
+    The graph is associated with the repository (repo) provided in the request.
+
+    Request Body (JSON):
+        - repo (str): Name of the repository.
+        - src (int): ID of the source node.
+        - dest (int): ID of the destination node.
+
+    Returns:
+        A JSON response with:
+        - status (str): Status of the request ("success" or "error").
+        - paths (list): List of paths between the source and destination nodes.
+    """
+
     # Get JSON data from the request
     data = request.get_json()
 
-    # name of repository
+    # Validate 'repo' parameter
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
-    # source ID
+    # Validate 'src' parameter
     src = data.get('src')
     if src is None:
         return jsonify({'status': f'Missing mandatory parameter "src"'}), 400
 
-    # dest ID
+    # Validate 'dest' parameter
     dest = data.get('dest')
     if dest is None:
         return jsonify({'status': f'Missing mandatory parameter "dest"'}), 400
 
-    # Get JSON data from the request
-    g = Graph(repo, host=FALKORDB_HOST, port=FALKORDB_PORT,
-                 username=FALKORDB_USERNAME, password=FALKORDB_PASSWORD)
+    # Initialize graph with provided repo and credentials
+    g = Graph(repo)
 
+    # Find paths between the source and destination nodes
     paths = g.find_paths(src, dest)
 
-    # Create a response
-    response = {
-        'status': 'success',
-        'paths': paths
-    }
+    # Create and return a successful response
+    response = { 'status': 'success', 'paths': paths }
 
     return jsonify(response), 200
 

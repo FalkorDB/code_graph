@@ -20,12 +20,6 @@ analyzers = {'.c': CAnalyzer(),
              '.py': PythonAnalyzer()}
 
 class SourceAnalyzer():
-    def __init__(self) -> None:
-        self.host      = os.getenv('FALKORDB_HOST')
-        self.port      = os.getenv('FALKORDB_PORT')
-        self.username  = os.getenv('FALKORDB_USERNAME')
-        self.password  = os.getenv('FALKORDB_PASSWORD')
-
     def first_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Perform the first pass analysis on source files in the given directory tree.
@@ -167,8 +161,7 @@ class SourceAnalyzer():
 
         try:
             # Initialize the graph and analyzer
-            self.graph = Graph(repo_name, self.host, self.port, self.username,
-                               self.password)
+            self.graph = Graph(repo_name)
 
             # Analyze repository
             self.analyze_sources(ignore)
@@ -195,8 +188,7 @@ class SourceAnalyzer():
         logger.debug(f'proj_name: {proj_name}')
 
         # Initialize the graph and analyzer
-        self.graph = Graph(proj_name, self.host, self.port, self.username,
-                           self.password)
+        self.graph = Graph(proj_name)
 
         # Analyze source files
         self.analyze_sources(ignore)
