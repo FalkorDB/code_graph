@@ -16,7 +16,7 @@ class Test_Git_History(unittest.TestCase):
         repo_dir = str(repo_dir)
 
         # Build git commit graph
-        git_graph = build_commit_graph(repo_dir)
+        git_graph =  build_commit_graph(repo_dir, 'git_repo')
 
         # validate git graph structure
         repo = Repo(repo_dir)

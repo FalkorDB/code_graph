@@ -9,10 +9,10 @@ def list_repos() -> List[str]:
         List processed repositories
     """
 
-    db = FalkorDB(host=os.getenv('FALKORDB_HOST'),
-                  port=os.getenv('FALKORDB_PORT'),
-                  username=os.getenv('FALKORDB_USERNAME'),
-                  password=os.getenv('FALKORDB_PASSWORD'))
+    db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
+                  port=os.getenv('FALKORDB_PORT', 6379),
+                  username=os.getenv('FALKORDB_USERNAME', None),
+                  password=os.getenv('FALKORDB_PASSWORD', None))
 
     graphs = db.list_graphs()
     graphs = [g for g in graphs if not g.endswith('_git')]
@@ -25,10 +25,10 @@ class Graph():
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.db   = FalkorDB(host=os.getenv('FALKORDB_HOST'),
-                             port=os.getenv('FALKORDB_PORT'),
-                             username=os.getenv('FALKORDB_USERNAME'),
-                             password=os.getenv('FALKORDB_PASSWORD'))
+        self.db   = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
+                             port=os.getenv('FALKORDB_PORT', 6379),
+                             username=os.getenv('FALKORDB_USERNAME', None),
+                             password=os.getenv('FALKORDB_PASSWORD', None))
         self.g    = self.db.select_graph(name)
 
         # create indicies

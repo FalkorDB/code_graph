@@ -12,10 +12,10 @@ class GitGraph():
 
     def __init__(self, name: str):
 
-        self.db = FalkorDB(host=os.getenv('FALKORDB_HOST'),
-                           port=os.getenv('FALKORDB_PORT'),
-                           username=os.getenv('FALKORDB_USERNAME'),
-                           password=os.getenv('FALKORDB_PASSWORD'))
+        self.db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
+                           port=os.getenv('FALKORDB_PORT', 6379),
+                           username=os.getenv('FALKORDB_USERNAME', None),
+                           password=os.getenv('FALKORDB_PASSWORD', None))
 
         self.g = self.db.select_graph(name)
 
