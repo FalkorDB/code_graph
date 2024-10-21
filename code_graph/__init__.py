@@ -1,3 +1,4 @@
+from .info import *
 from .graph import *
 from .entities import *
 from .git_utils import *

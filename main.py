@@ -1,5 +1,4 @@
 import os
-import redis
 import datetime
 from code_graph import *
 from typing import Optional
@@ -70,6 +69,7 @@ def get_neighbors():
     Endpoint to get neighbors of a specific node in the graph.
     Expects 'repo' and 'node_id' as query parameters.
     """
+
     repo = request.args.get('repo')
     node_id = request.args.get('node_id')
 
@@ -154,6 +154,8 @@ def process_repo():
     except Exception as e:
         logger.error(f'An error occurred: {e}')
         return jsonify({'status': f'Failed to process repository: {git_url}'}), 400
+
+    save_repo_info(repo_name, repo_url)
 
     # Create a response
     response = {
@@ -358,7 +360,7 @@ def repo_info():
     g = Graph(repo)
 
     # Retrieve statistics from the graph
-    stats = g.stats()
+    stats = g.stats() | get_repo_info(repo)
 
     # Create a response
     response = {
