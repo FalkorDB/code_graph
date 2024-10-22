@@ -31,11 +31,14 @@ class Graph():
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.db   = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
-                             port=os.getenv('FALKORDB_PORT', 6379),
-                             username=os.getenv('FALKORDB_USERNAME', None),
-                             password=os.getenv('FALKORDB_PASSWORD', None))
-        self.g    = self.db.select_graph(name)
+        self.db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
+                           port=os.getenv('FALKORDB_PORT', 6379),
+                           username=os.getenv('FALKORDB_USERNAME', None),
+                           password=os.getenv('FALKORDB_PASSWORD', None))
+        self.g = self.db.select_graph(name)
+
+        # Initialize the backlog as disabled by default
+        self.backlog = None
 
         # create indicies
 
@@ -85,9 +88,50 @@ class Graph():
         """
         self.g.delete()
 
+    def enable_backlog(self) -> None:
+        """
+        Enables the backlog by initializing an empty list.
+        """
+
+        self.backlog = []
+
+    def disable_backlog(self) -> None:
+        """
+        Disables the backlog by setting it to None.
+        """
+
+        self.backlog = None
 
     def _query(self, q: str, params: dict) -> QueryResult:
-        return self.g.query(q, params)
+        """
+        Executes a query on the graph database and logs changes to the backlog if any.
+
+        Args:
+            q (str): The query string to execute.
+            params (dict): The parameters for the query.
+
+        Returns:
+            QueryResult: The result of the query execution.
+        """
+
+        result_set = self.g.query(q, params)
+
+        if self.backlog is not None:
+            # Check if any change occurred in the query results
+            change_detected = any(
+                getattr(result_set, attr) > 0
+                for attr in [
+                    'relationships_deleted', 'nodes_deleted', 'labels_added',
+                    'labels_removed', 'nodes_created', 'properties_set',
+                    'properties_removed', 'relationships_created'
+                ]
+            )
+
+            # Append the query and parameters to the backlog if changes occurred
+            if change_detected:
+                self.backlog.append((q, params))
+
+        return result_set
 
     def get_sub_graph(self, l: int) -> dict:
 
