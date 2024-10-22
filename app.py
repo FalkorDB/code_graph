@@ -281,7 +281,7 @@ def auto_complete():
         return jsonify({'status': f'Missing mandatory parameter "prefix"'}), 400
 
     # Fetch auto-completion results
-    completions = auto_complete(repo, prefix)
+    completions = prefix_search(repo, prefix)
 
     # Create a success response
     response = {

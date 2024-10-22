@@ -4,6 +4,12 @@ from .entities import *
 from typing import Dict, List, Optional
 from falkordb import FalkorDB, Path, Node, QueryResult
 
+# Configure the logger
+import logging
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 def list_repos() -> List[str]:
     """
         List processed repositories
@@ -329,27 +335,16 @@ class Graph():
             CALL db.idx.fulltext.queryNodes('Searchable', $prefix)
             YIELD node
             WITH node
+            RETURN node
             LIMIT 10
-            RETURN collect(node)
         """
 
-        try:
-            # Execute the query using the provided graph database connection.
-            completions = self._query(query, {'prefix': search_prefix}).result_set[0][0]
+        # Execute the query using the provided graph database connection.
+        result_set = self._query(query, {'prefix': search_prefix}).result_set
 
-            # Remove label Searchable from each node
-            for node in completions:
-                node.labels.remove('Searchable')
+        completions = [encode_node(row[0]) for row in result_set]
 
-            # Sort the results by the label for better organization.
-            completions = sorted(completions, key=lambda x: x.labels)
-
-            return completions
-
-        except Exception as e:
-            # Log any errors encountered during the search and return an empty list.
-            logging.error(f"Error while searching for entities with prefix '{prefix}': {e}")
-            return []
+        return completions
 
 
     def get_function(self, func_id: int) -> Optional[Function]:
