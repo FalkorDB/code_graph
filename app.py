@@ -63,44 +63,47 @@ def graph_entities():
         logging.error(f"Error retrieving sub-graph for repo '{repo}': {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
 @app.route('/get_neighbors', methods=['GET'])
 def get_neighbors():
     """
     Endpoint to get neighbors of a specific node in the graph.
     Expects 'repo' and 'node_id' as query parameters.
+
+    Returns:
+        JSON response containing neighbors or error messages.
     """
 
-    repo = request.args.get('repo')
+    # Get query parameters
+    repo    = request.args.get('repo')
     node_id = request.args.get('node_id')
 
+    # Validate 'repo' parameter
     if not repo:
         logging.error("Repository name is missing in the request.")
         return jsonify({"error": "Repository name is required."}), 400
 
+    # Validate 'node_id' parameter
     if not node_id:
         logging.error("Node ID is missing in the request.")
         return jsonify({"error": "Node ID is required."}), 400
 
+    # Try converting node_id to an integer
     try:
-        # Validate and convert node_id to integer
         node_id = int(node_id)
     except ValueError:
         logging.error(f"Invalid node ID: {node_id}. It must be an integer.")
         return jsonify({"error": "Invalid node ID. It must be an integer."}), 400
 
-    try:
-        # Initialize the graph with the provided repo and credentials
-        g = Graph(repo)
+    # Initialize the graph with the provided repository
+    g = Graph(repo)
 
-        # Get neighbors of the given node
-        neighbors = g.get_neighbors(node_id)
+    # Fetch the neighbors of the specified node
+    neighbors = g.get_neighbors(node_id)
 
-        logging.info(f"Successfully retrieved neighbors for node ID {node_id} in repo '{repo}'.")
-        return jsonify(neighbors), 200
-
-    except Exception as e:
-        logging.error(f"Error retrieving node neighbors for repo '{repo}': {e}")
-        return jsonify({"error": "Internal server error"}), 500
+    # Log and return the neighbors
+    logging.info(f"Successfully retrieved neighbors for node ID {node_id} in repo '{repo}'.")
+    return jsonify(neighbors), 200
 
 
 @app.route('/process_repo', methods=['POST'])
@@ -200,44 +203,32 @@ def process_local_repo():
 
 @app.route('/process_code_coverage', methods=['POST'])
 def process_code_coverage():
+    """
+    Endpoint to process code coverage data for a given repository.
+
+    Returns:
+        JSON response indicating success or an error message.
+    """
 
     # Get JSON data from the request
     data = request.get_json()
 
-    # Process the data
+    # Validate that 'repo' is provided
     repo = data.get('repo')
-    lcov = data.get('lcov')
-
     if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+        logging.warning("Missing mandatory parameter 'repo'")
+        return jsonify({'status': 'error', 'message': 'Missing mandatory parameter "repo"'}), 400
+
+    # Validate that 'lcov' is provided
+    lcov = data.get('lcov')
     if lcov is None:
+        logging.warning("Missing mandatory parameter 'lcov'")
         return jsonify({'status': f'Missing mandatory parameter "lcov"'}), 400
 
+    # Process the lcov data for the repository
     process_lcov(repo, lcov)
 
-    # Create a response
-    response = {
-        'status': 'success',
-    }
-
-    return jsonify(response), 200
-
-@app.route('/process_git_history', methods=['POST'])
-def process_git_history():
-
-    # Get JSON data from the request
-    data = request.get_json()
-
-    # path to local repository
-    repo = data.get('repo')
-    if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
-
-    ignore_list = data.get('ignore') or []
-
-    build_commit_graph(repo, ignore_list)
-
-    # Create a response
+    # Create a success response
     response = {
         'status': 'success',
     }
@@ -246,22 +237,31 @@ def process_git_history():
 
 
 @app.route('/switch_commit', methods=['POST'])
-def process_switch_commit():
+def switch_commit():
+    """
+    Endpoint to switch a repository to a specific commit.
+
+    Returns:
+        JSON response with the change set or an error message.
+    """
+
     # Get JSON data from the request
     data = request.get_json()
 
-    # path to local repository
+    # Validate that 'repo' is provided
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
+    # Validate that 'commit' is provided
     commit = data.get('commit')
     if commit is None:
         return jsonify({'status': f'Missing mandatory parameter "commit"'}), 400
 
+    # Attempt to switch the repository to the specified commit
     change_set = switch_commit(repo, commit)
 
-    # Create a response
+    # Create a success response
     response = {
         'status': 'success',
         'change_set': change_set
@@ -270,21 +270,31 @@ def process_switch_commit():
     return jsonify(response), 200
 
 @app.route('/auto_complete', methods=['POST'])
-def process_auto_complete():
+def auto_complete():
+    """
+    Endpoint to process auto-completion requests for a repository based on a prefix.
+
+    Returns:
+        JSON response with auto-completion suggestions or an error message.
+    """
+
     # Get JSON data from the request
     data = request.get_json()
 
-    # path to local repository
+    # Validate that 'repo' is provided
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
+    # Validate that 'prefix' is provided
     prefix = data.get('prefix')
     if prefix is None:
         return jsonify({'status': f'Missing mandatory parameter "prefix"'}), 400
 
+    # Fetch auto-completion results
     completions = auto_complete(repo, prefix)
-    # Create a response
+
+    # Create a success response
     response = {
         'status': 'success',
         'completions': completions
@@ -294,12 +304,18 @@ def process_auto_complete():
 
 
 @app.route('/list_repos', methods=['GET'])
-def process_list_repos():
-    # Get JSON data from the request
+def list_repos():
+    """
+    Endpoint to list all available repositories.
 
+    Returns:
+        JSON response with a list of repositories or an error message.
+    """
+
+    # Fetch list of repositories
     repos = list_repos()
 
-    # Create a response
+    # Create a success response with the list of repositories
     response = {
         'status': 'success',
         'repositories': repos
@@ -309,21 +325,34 @@ def process_list_repos():
 
 
 @app.route('/list_commits', methods=['POST'])
-def process_list_commits():
+def list_commits():
+    """
+    Endpoint to list all commits of a specified repository.
+
+    Request JSON Structure:
+    {
+        "repo": "repository_name"
+    }
+
+    Returns:
+        JSON response with a list of commits or an error message.
+    """
+
     # Get JSON data from the request
     data = request.get_json()
 
-    # name of repository
+    # Validate the presence of the 'repo' parameter
     repo = data.get('repo')
     if repo is None:
         return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
 
-    # Get JSON data from the request
+    # Initialize GitGraph object to interact with the repository
     git_graph = GitGraph(GitRepoName(repo))
 
+    # Fetch commits from the repository
     commits = git_graph.list_commits()
 
-    # Create a response
+    # Return success response with the list of commits
     response = {
         'status': 'success',
         'commits': commits
