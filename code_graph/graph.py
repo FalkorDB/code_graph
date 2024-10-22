@@ -80,6 +80,9 @@ class Graph():
         self.g.delete()
 
 
+    def _query(self, q: str, params: dict) -> QueryResult:
+        return self.g.query(q, params)
+
     def get_sub_graph(self, l: int) -> dict:
 
         q = """MATCH (src)
@@ -89,7 +92,7 @@ class Graph():
 
         sub_graph = {'nodes': [], 'edges': [] }
 
-        result_set = self.g.query(q, {'limit': l}).result_set
+        result_set = self._query(q, {'limit': l}).result_set
         for row in result_set:
             src  = row[0]
             e    = row[1]
@@ -137,7 +140,7 @@ class Graph():
 
         try:
             # Execute the graph query with node_id parameter
-            result_set = self.g.query(query, {'node_id': node_id}).result_set
+            result_set = self._query(query, {'node_id': node_id}).result_set
 
             # Iterate over the result set and process nodes and edges
             for edge, destination_node in result_set:
@@ -172,7 +175,7 @@ class Graph():
             'src_end': c.src_end,
         }
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
         c.id = res.result_set[0][0]
 
     def _class_from_node(self, n: Node) -> Class:
@@ -193,7 +196,7 @@ class Graph():
 
     def get_class_by_name(self, class_name: str) -> Optional[Class]:
         q = "MATCH (c:Class) WHERE c.name = $name RETURN c LIMIT 1"
-        res = self.g.query(q, {'name': class_name}).result_set
+        res = self._query(q, {'name': class_name}).result_set
 
         if len(res) == 0:
             return None
@@ -205,7 +208,7 @@ class Graph():
                WHERE ID(c) = $class_id
                RETURN c"""
         
-        res = self.g.query(q, {'class_id': class_id})
+        res = self._query(q, {'class_id': class_id})
 
         if len(res.result_set) == 0:
             return None
@@ -239,7 +242,7 @@ class Graph():
             'ret_type': func.ret_type
         }
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
         func.id = res.result_set[0][0]
 
     def _function_from_node(self, n: Node) -> Function:
@@ -280,7 +283,7 @@ class Graph():
         
         params = {'ids': ids, 'values': metadata}
 
-        self.g.query(q, params)
+        self._query(q, params)
 
     # get all functions defined by file
     def get_functions_in_file(self, path: str, name: str, ext: str) -> List[Function]:
@@ -289,13 +292,13 @@ class Graph():
                RETURN collect(func)"""
 
         params = {'path': path, 'name': name, 'ext': ext}
-        funcs = self.g.query(q, params).result_set[0][0]
+        funcs = self._query(q, params).result_set[0][0]
         
         return [self._function_from_node(n) for n in funcs]
 
     def get_function_by_name(self, name: str) -> Optional[Function]:
         q = "MATCH (f:Function) WHERE f.name = $name RETURN f LIMIT 1"
-        res = self.g.query(q, {'name': name}).result_set
+        res = self._query(q, {'name': name}).result_set
 
         if len(res) == 0:
             return None
@@ -332,7 +335,7 @@ class Graph():
 
         try:
             # Execute the query using the provided graph database connection.
-            completions = self.g.query(query, {'prefix': search_prefix}).result_set[0][0]
+            completions = self._query(query, {'prefix': search_prefix}).result_set[0][0]
 
             # Remove label Searchable from each node
             for node in completions:
@@ -354,7 +357,7 @@ class Graph():
                WHERE ID(f) = $func_id
                RETURN f"""
         
-        res = self.g.query(q, {'func_id': func_id})
+        res = self._query(q, {'func_id': func_id})
 
         if len(res.result_set) == 0:
             return None
@@ -369,7 +372,7 @@ class Graph():
                MATCH (f)-[:CALLS]->(callee)
                RETURN callee"""
 
-        res = self.g.query(q, {'func_id': func_id})
+        res = self._query(q, {'func_id': func_id})
 
         callees = []
         for row in res.result_set:
@@ -384,7 +387,7 @@ class Graph():
                MATCH (caller)-[:CALLS]->(f)
                RETURN caller"""
 
-        res = self.g.query(q, {'func_id': func_id})
+        res = self._query(q, {'func_id': func_id})
 
         callers = []
         for row in res.result_set:
@@ -407,7 +410,7 @@ class Graph():
                RETURN ID(f)"""
         params = {'path': file.path, 'name': file.name, 'ext': file.ext}
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
         file.id = res.result_set[0][0]
 
     def delete_files(self, files: List[dict], log: bool = False) -> tuple[str, dict, List[int]]:
@@ -432,7 +435,7 @@ class Graph():
         """
 
         params = {'files': files}
-        res = self.g.query(q, params)
+        res = self._query(q, params)
 
         if log and (res.relationships_deleted > 0 or res.nodes_deleted > 0):
             return (q, params)
@@ -464,7 +467,7 @@ class Graph():
                RETURN f"""
         params = {'path': path, 'name': name, 'ext': ext}
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
         if(len(res.result_set) == 0):
             return None
 
@@ -491,7 +494,7 @@ class Graph():
 
         params = {'path': path, 'name': name, 'ext': ext, 'coverage': coverage}
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
 
     def connect_entities(self, relation: str, src_id: int, dest_id: int) -> None:
         """
@@ -507,7 +510,7 @@ class Graph():
                 MERGE (src)-[:{relation}]->(dest)"""
 
         params = {'src_id': src_id, 'dest_id': dest_id}
-        self.g.query(q, params)
+        self._query(q, params)
 
     def function_calls_function(self, caller_id: int, callee_id: int, pos: int) -> None:
         """
@@ -524,7 +527,7 @@ class Graph():
                MERGE (caller)-[e:CALLS {pos:$pos}]->(callee)"""
 
         params = {'caller_id': caller_id, 'callee_id': callee_id, 'pos': pos}
-        self.g.query(q, params)
+        self._query(q, params)
 
     def add_struct(self, s: Struct) -> None:
         """
@@ -548,7 +551,7 @@ class Graph():
             'fields': s.fields
         }
 
-        res = self.g.query(q, params)
+        res = self._query(q, params)
         s.id = res.result_set[0][0]
 
     def _struct_from_node(self, n: Node) -> Struct:
@@ -578,7 +581,7 @@ class Graph():
 
     def get_struct_by_name(self, struct_name: str) -> Optional[Struct]:
         q = "MATCH (s:Struct) WHERE s.name = $name RETURN s LIMIT 1"
-        res = self.g.query(q, {'name': struct_name}).result_set
+        res = self._query(q, {'name': struct_name}).result_set
 
         if len(res) == 0:
             return None
@@ -590,7 +593,7 @@ class Graph():
                WHERE ID(s) = $struct_id
                RETURN s"""
         
-        res = self.g.query(q, {'struct_id': struct_id})
+        res = self._query(q, {'struct_id': struct_id})
 
         if len(res.result_set) == 0:
             return None
@@ -617,7 +620,7 @@ class Graph():
             Re-run a query to transition the graph from one state to another
         """
 
-        return self.g.query(q, params)
+        return self._query(q, params)
 
     def find_paths(self, src: int, dest: int) -> List[Path]:
         """
@@ -644,7 +647,7 @@ class Graph():
            """
 
         # Perform the query with the source and destination node IDs.
-        result_set = self.g.query(q, {'src_id': src, 'dest_id': dest}).result_set
+        result_set = self._query(q, {'src_id': src, 'dest_id': dest}).result_set
 
         paths = []
 
@@ -665,11 +668,29 @@ class Graph():
         """
 
         q = "MATCH (n) RETURN count(n)"
-        node_count = self.g.query(q).result_set[0][0]
+        node_count = self._query(q).result_set[0][0]
 
         q = "MATCH ()-[e]->() RETURN count(e)"
-        edge_count = self.g.query(q).result_set[0][0]
+        edge_count = self._query(q).result_set[0][0]
 
         # Return the statistics
         return {'node_count': node_count, 'edge_count': edge_count}
+
+    def unreachable_entities(self, lbl: Optional[str], rel: Optional[str]) -> List[dict]:
+        lbl = f": {lbl}" if lbl else ""
+        rel = f": {rel}" if rel else ""
+
+        q = f""" MATCH (n {lbl})
+                 WHERE not ()-[{rel}]->(n)
+                 RETURN n
+        """
+
+        result_set = self._query(q).result_set
+
+        unreachables = []
+        for row in result_set:
+            node = row[0]
+            unreachables.append(encode_node(node))
+
+        return unreachables
 

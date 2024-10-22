@@ -19,17 +19,6 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def extract_org_name_from_url(url: str) -> Optional[tuple[str, str]]:
-    components = url.split('/')
-    n = len(components)
-    
-    # https://github.com/falkordb/falkordb
-    # Expecting atleast 4 components
-    if n < 4:
-        return None
-    
-    return (components[n-2], components[n-1])
-
 @app.route('/graph_entities', methods=['GET'])
 def graph_entities():
     """
@@ -445,6 +434,39 @@ def find_paths():
 
     return jsonify(response), 200
 
+
+@app.route('/unreachable', methods=['POST'])
+def unreachable_entities():
+    """
+    Endpoint to retrieve unreachable entities in the graph.
+    Expects 'repo', optional 'label', and optional 'relation' as parameters in the POST request.
+
+    Returns:
+        JSON response with unreachable entities or error message.
+    """
+
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # Validate 'repo' parameter
+    repo = data.get('repo')
+    if repo is None:
+        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+    # Get optional 'label' and 'relation' parameters
+    lbl = data.get('label', None)
+    rel = data.get('relation', None)
+
+    # Initialize graph with provided repo and credentials
+    g = Graph(repo)
+
+    # Fetch unreachable entities based on optional label and relation
+    unreachable_entities = g.unreachable_entities(lbl, rel)
+
+    # Create and return a successful response
+    response = { 'status': 'success', 'unreachables ': unreachable_entities }
+
+    return jsonify(response), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
