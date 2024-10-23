@@ -140,12 +140,15 @@ def process_repo():
     # Create source code analyzer
     analyzer = SourceAnalyzer()
 
-    try:
-        analyzer.analyze_github_repository(git_url, repo_path, repo_name, ignore)
-        build_commit_graph(repo_path, repo_name, ignore)
-    except Exception as e:
-        logger.error(f'An error occurred: {e}')
-        return jsonify({'status': f'Failed to process repository: {git_url}'}), 400
+    analyzer.analyze_github_repository(git_url, repo_path, repo_name, ignore)
+    build_commit_graph(repo_path, repo_name, ignore)
+
+    #try:
+    #    analyzer.analyze_github_repository(git_url, repo_path, repo_name, ignore)
+    #    build_commit_graph(repo_path, repo_name, ignore)
+    #except Exception as e:
+    #    logger.error(f'An error occurred: {e}')
+    #    return jsonify({'status': f'Failed to process repository: {git_url}'}), 400
 
     save_repo_info(repo_name, repo_url)
 
@@ -172,10 +175,7 @@ def process_local_repo():
         logger.debug(f"Ignoring the following paths: {ignore}")
 
     # Create source code analyzer
-    analyzer = SourceAnalyzer(host     = FALKORDB_HOST,
-                              port     = FALKORDB_PORT,
-                              username = FALKORDB_USERNAME,
-                              password = FALKORDB_PASSWORD)
+    analyzer = SourceAnalyzer()
 
     try:
         analyzer.analyze_local_repository(repo, ignore)
@@ -302,7 +302,7 @@ def list_repos():
     """
 
     # Fetch list of repositories
-    repos = list_repos()
+    repos = get_repos()
 
     # Create a success response with the list of repositories
     response = {

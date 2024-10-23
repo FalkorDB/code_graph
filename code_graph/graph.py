@@ -1,7 +1,7 @@
 import os
 import time
 from .entities import *
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from falkordb import FalkorDB, Path, Node, QueryResult
 
 # Configure the logger
@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def list_repos() -> List[str]:
+def get_repos() -> List[str]:
     """
         List processed repositories
     """
@@ -93,14 +93,39 @@ class Graph():
         Enables the backlog by initializing an empty list.
         """
 
-        self.backlog = []
+        print("Graph backlog is enabled")
+        self.backlog = {'queries': [], 'params': []}
 
     def disable_backlog(self) -> None:
         """
         Disables the backlog by setting it to None.
         """
 
+        print("Graph backlog is disabled")
         self.backlog = None
+
+    def clear_backlog(self) -> Tuple[List[str], List[dict]]:
+        """
+        Clears and returns the backlog of queries and parameters.
+
+        Returns:
+            Tuple[List[str], List[dict]]: A tuple containing two lists:
+            - The first list contains the backlog of queries.
+            - The second list contains the backlog of query parameters.
+        """
+
+        if self.backlog:
+            queries = self.backlog['queries']
+            params = self.backlog['params']
+            self.backlog = {'queries': [], 'params': []}
+            print("clear_backlog returning:")
+            print(f"queries: {queries}")
+            print(f"params: {params}")
+            return queries, params
+        else:
+            # Return empty lists if backlog is not initialized or empty
+            return [], []
+
 
     def _query(self, q: str, params: dict) -> QueryResult:
         """
@@ -116,7 +141,9 @@ class Graph():
 
         result_set = self.g.query(q, params)
 
+        print(f"In _query, self.backlog: {self.backlog}")
         if self.backlog is not None:
+            print("Graph backlog is enabled")
             # Check if any change occurred in the query results
             change_detected = any(
                 getattr(result_set, attr) > 0
@@ -126,10 +153,14 @@ class Graph():
                     'properties_removed', 'relationships_created'
                 ]
             )
+            print(f"change_detected: {change_detected}")
 
             # Append the query and parameters to the backlog if changes occurred
             if change_detected:
-                self.backlog.append((q, params))
+                print(f"logging queries: {q}")
+                print(f"logging params: {params}")
+                self.backlog['queries'].append(q)
+                self.backlog['params'].append(params)
 
         return result_set
 
@@ -452,7 +483,7 @@ class Graph():
         res = self._query(q, params)
         file.id = res.result_set[0][0]
 
-    def delete_files(self, files: List[dict], log: bool = False) -> tuple[str, dict, List[int]]:
+    def delete_files(self, files: List[dict]) -> tuple[str, dict, List[int]]:
         """
         Deletes file(s) from the graph in addition to any other entity
         defined in the file
@@ -475,9 +506,6 @@ class Graph():
 
         params = {'files': files}
         res = self._query(q, params)
-
-        if log and (res.relationships_deleted > 0 or res.nodes_deleted > 0):
-            return (q, params)
 
         return None
 
