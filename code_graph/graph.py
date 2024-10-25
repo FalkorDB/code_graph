@@ -10,6 +10,14 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def graph_exists(name: str):
+    db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
+                  port=os.getenv('FALKORDB_PORT', 6379),
+                  username=os.getenv('FALKORDB_USERNAME', None),
+                  password=os.getenv('FALKORDB_PASSWORD', None))
+
+    return name in db.list_graphs()
+
 def get_repos() -> List[str]:
     """
         List processed repositories
@@ -44,13 +52,7 @@ class Graph():
 
         # index File path, name and ext fields
         try:
-            self.g.create_node_range_index("File", "path", "name", "ext")
-        except Exception:
-            pass
-
-        # index Function
-        try:
-            self.g.create_node_range_index("File", "path", "name")
+            self.g.create_node_range_index("File", "name", "ext")
         except Exception:
             pass
 
@@ -127,7 +129,7 @@ class Graph():
             return [], []
 
 
-    def _query(self, q: str, params: dict) -> QueryResult:
+    def _query(self, q: str, params: Optional[dict] = None) -> QueryResult:
         """
         Executes a query on the graph database and logs changes to the backlog if any.
 

@@ -37,7 +37,7 @@ def save_repo_info(repo_name: str, repo_url: str) -> None:
 
     try:
         r = get_redis_connection()
-        key = f"{{ {repo_name} }}_info"  # Safely format the key
+        key = f"{{{repo_name}}}_info"  # Safely format the key
 
         # Save the repository URL
         r.hset(key, 'repo_url', repo_url)

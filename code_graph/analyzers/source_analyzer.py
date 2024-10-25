@@ -1,6 +1,5 @@
 import os
 import shutil
-import subprocess
 import concurrent.futures
 
 from git import Repo
@@ -20,6 +19,12 @@ analyzers = {'.c': CAnalyzer(),
              '.py': PythonAnalyzer()}
 
 class SourceAnalyzer():
+
+    def supported_types(self) -> List[str]:
+        """
+        """
+        return list(analyzers.keys())
+
     def first_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Perform the first pass analysis on source files in the given directory tree.
@@ -53,6 +58,7 @@ class SourceAnalyzer():
                     continue
 
                 logger.info(f'Processing file: {file_path}')
+                print(f'Processing file: {file_path}')
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
@@ -111,6 +117,17 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         concurrent.futures.wait(tasks)
 
+    def analyze_file(self, path: Path, graph: Graph) -> None:
+        ext = path.suffix
+        print(f"analyze_file: path: {path}")
+        print(f"analyze_file: ext: {ext}")
+        if ext not in analyzers:
+            return
+
+        with open(path, 'rb') as f:
+            analyzers[ext].first_pass(path, f, graph)
+            analyzers[ext].second_pass(path, f, graph)
+
     def analyze_sources(self, ignore: List[str]) -> None:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # First pass analysis of the source code
@@ -119,62 +136,9 @@ class SourceAnalyzer():
             # Second pass analysis of the source code
             self.second_pass(ignore, executor)
 
-    def analyze_github_repository(
-        self,
-        url: str,
-        repo_path: Path,
-        repo_name: str,
-        ignore: Optional[List[str]] = []
-    ) -> None:
+    def analyze(self, path: str, g: Graph, ignore: Optional[List[str]] = []) -> None:
         """
-        Analyze a Git repository given its URL.
-
-        Args:
-            url: The URL of the Git repository to analyze
-            ignore_patterns: List of patterns to ignore during analysis
-
-        Raises:
-            subprocess.SubprocessError: If git clone fails
-            OSError: If there are filesystem operation errors
-        """
-
-        # Extract repository name more reliably
-        # Delete local repository if exists
-        if repo_path.exists():
-            shutil.rmtree(repo_path)
-
-        # Create directory
-        repo_path.mkdir(parents=True, exist_ok=True)
-
-        # Clone repository
-        # Prepare the git clone command
-        command = ["git", "clone", url, repo_path]
-
-        # Run the git clone command and wait for it to finish
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-
-        # Store original working directory
-        original_dir = Path.cwd()
-
-        # change working directory to local repository
-        os.chdir(repo_path)
-
-        try:
-            # Initialize the graph and analyzer
-            self.graph = Graph(repo_name)
-
-            # Analyze repository
-            self.analyze_sources(ignore)
-
-            logging.info(f"Successfully processed repository: {repo_name}")
-
-        finally:
-            # Ensure we always return to the original directory
-            os.chdir(original_dir)
-
-    def analyze_local_folder(self, path: str, ignore: Optional[List[str]] = []) -> Graph:
-        """
-        Analyze a local folder.
+        Analyze path.
 
         Args:
             path (str): Path to a local folder containing source files to process
@@ -184,18 +148,13 @@ class SourceAnalyzer():
         # change working directory to path
         os.chdir(path)
 
-        proj_name = os.path.split(os.path.normpath(path))[-1]
-        logger.debug(f'proj_name: {proj_name}')
-
         # Initialize the graph and analyzer
-        self.graph = Graph(proj_name)
+        self.graph = g
 
         # Analyze source files
         self.analyze_sources(ignore)
 
-        logger.info("Done processing folder")
-
-        return self.graph
+        logger.info("Done analyzing path")
 
     def analyze_local_repository(self, path: str, ignore: Optional[List[str]] = []) -> Graph:
         """

@@ -83,7 +83,7 @@ class GitGraph():
         self.g.query(q, params)
 
 
-    def set_parent_transition(self, child: str, parent: str, queries: [str], params: [dict]) -> None:
+    def set_parent_transition(self, child: str, parent: str, queries: [str], params: [str]) -> None:
         """
             Sets the queries and parameters needed to transition the code-graph
             from the child commit to the parent commit
@@ -92,12 +92,12 @@ class GitGraph():
         q = """MATCH (child :Commit {hash: $child})-[e:PARENT]->(parent :Commit {hash: $parent})
                SET e.queries = $queries, e.params = $params"""
 
-        params = {'child': child, 'parent': parent, 'queries': queries, 'params': params}
+        _params = {'child': child, 'parent': parent, 'queries': queries, 'params': params}
 
-        self.g.query(q, params)
+        self.g.query(q, _params)
 
 
-    def set_child_transition(self, child: str, parent: str, queries: List[tuple[str: dict]]) -> None:
+    def set_child_transition(self, child: str, parent: str, queries: [str], params: [str]) -> None:
         """
             Sets the queries and parameters needed to transition the code-graph
             from the parent commit to the child commit
@@ -106,9 +106,9 @@ class GitGraph():
         q = """MATCH (parent :Commit {hash: $parent})-[e:CHILD]->(child :Commit {hash: $child})
                SET e.queries = $queries, e.params = $params"""
 
-        params = {'child': child, 'parent': parent, 'queries': queries}
+        _params = {'child': child, 'parent': parent, 'queries': queries}
 
-        self.g.query(q, params)
+        self.g.query(q, _params)
 
 
     def get_parent_transitions(self, child: str, parent: str) -> List[tuple[str: dict]]:

@@ -1,9 +1,10 @@
 import io
-from typing import Union, Optional
-from pathlib import Path
+import os
 from ..utils import *
+from pathlib import Path
 from ...entities import *
 from ...graph import Graph
+from typing import Union, Optional
 from ..analyzer import AbstractAnalyzer
 
 import tree_sitter_python as tspython
@@ -226,7 +227,7 @@ class PythonAnalyzer(AbstractAnalyzer):
         logger.info(f"Python Processing {path}")
 
         # Create file entity
-        file = File(str(path.parent), path.name, path.suffix)
+        file = File(os.path.dirname(path), path.name, path.suffix)
         graph.add_file(file)
 
         # Parse file
@@ -367,7 +368,7 @@ class PythonAnalyzer(AbstractAnalyzer):
         logger.info(f"Processing {path}")
 
         # Get file entity
-        file = graph.get_file(str(path.parent), path.name, path.suffix)
+        file = graph.get_file(os.path.dirname(path), path.name, path.suffix)
         if file is None:
             logger.error(f"File entity not found for: {path}")
             return
