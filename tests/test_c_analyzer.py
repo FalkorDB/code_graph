@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-from code_graph import SourceAnalyzer, File, Struct, Function
+from code_graph import SourceAnalyzer, File, Struct, Function, Graph
 
 class Test_C_Analyzer(unittest.TestCase):
     def test_analyzer(self):
@@ -20,10 +20,11 @@ class Test_C_Analyzer(unittest.TestCase):
         path = os.path.join(path, 'c')
         path = str(path)
 
-        g = analyzer.analyze_local_folder(path)
+        g = Graph("c")
+        analyzer.analyze(path, g)
 
-        f = g.get_file('.', 'src.c', '.c')
-        self.assertEqual(File('.', 'src.c', '.c'), f)
+        f = g.get_file('', 'src.c', '.c')
+        self.assertEqual(File('', 'src.c', '.c'), f)
 
         s = g.get_struct_by_name('exp')
         expected_s = Struct('src.c', 'exp', '', 9, 13)

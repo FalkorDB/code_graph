@@ -420,11 +420,19 @@ def create_app():
         src = data.get('src')
         if src is None:
             return jsonify({'status': f'Missing mandatory parameter "src"'}), 400
+        if not isinstance(src, int):
+            return jsonify({'status': "src node id must be int"}), 400
 
         # Validate 'dest' parameter
         dest = data.get('dest')
         if dest is None:
             return jsonify({'status': f'Missing mandatory parameter "dest"'}), 400
+        if not isinstance(dest, int):
+            return jsonify({'status': "dest node id must be int"}), 400
+
+        if not graph_exists(repo):
+            logging.error(f"Missing project {repo}")
+            return jsonify({"status": f"Missing project {repo}"}), 400
 
         # Initialize graph with provided repo and credentials
         g = Graph(repo)

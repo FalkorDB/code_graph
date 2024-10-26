@@ -722,7 +722,18 @@ class Graph():
 
         # Extract paths from the query result set.
         for row in result_set:
-            paths.append(row[0])
+            path  = []
+            p     = row[0]
+            nodes = p.nodes()
+            edges = p.edges()
+
+            for n, e in zip(nodes, edges):
+                path.append(encode_node(n))
+                path.append(encode_edge(e))
+
+            # encode last node on path
+            path.append(encode_node(nodes[-1]))
+            paths.append(path)
 
         return paths
 

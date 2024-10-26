@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-from code_graph import SourceAnalyzer, File, Class, Function
+from code_graph import SourceAnalyzer, File, Class, Function, Graph
 
 class Test_PY_Analyzer(unittest.TestCase):
     def test_analyzer(self):
@@ -20,10 +20,11 @@ class Test_PY_Analyzer(unittest.TestCase):
         path = os.path.join(path, 'py')
         path = str(path)
 
-        g = analyzer.analyze_local_folder(str(path))
+        g = Graph("py")
+        analyzer.analyze(path, g)
 
-        f = g.get_file('.', 'src.py', '.py')
-        self.assertEqual(File('.', 'src.py', '.py'), f)
+        f = g.get_file('', 'src.py', '.py')
+        self.assertEqual(File('', 'src.py', '.py'), f)
 
         log = g.get_function_by_name('log')
         expected_log = Function('src.py', 'log', None, 'None', '', 0, 1)
