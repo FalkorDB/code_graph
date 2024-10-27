@@ -132,14 +132,14 @@ def create_app():
         """
 
         data = request.get_json()
-        repo_url = data.get('repo_url')
-        if repo_url is None:
-            return jsonify({'status': f'Missing mandatory parameter "repo_url"'}), 400
-        logger.debug(f'Received repo_url: {repo_url}')
+        url = data.get('repo_url')
+        if url is None:
+            return jsonify({'status': f'Missing mandatory parameter "url"'}), 400
+        logger.debug(f'Received repo_url: {url}')
 
         ignore = data.get('ignore', [])
 
-        proj = Project(url)
+        proj = Project.from_git_repository(url)
         proj.analyze_sources(ignore)
         proj.process_git_history(ignore)
 
