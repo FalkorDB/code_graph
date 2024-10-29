@@ -7,8 +7,7 @@ from falkordb import FalkorDB, Path, Node, QueryResult
 # Configure the logger
 import logging
 logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+                    format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
 
 def graph_exists(name: str):
     db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
@@ -95,16 +94,16 @@ class Graph():
         Enables the backlog by initializing an empty list.
         """
 
-        print("Graph backlog is enabled")
         self.backlog = {'queries': [], 'params': []}
+        logging.debug("Backlog enabled")
 
     def disable_backlog(self) -> None:
         """
         Disables the backlog by setting it to None.
         """
 
-        print("Graph backlog is disabled")
         self.backlog = None
+        logging.debug("Backlog disabled")
 
     def clear_backlog(self) -> Tuple[List[str], List[dict]]:
         """
@@ -116,17 +115,24 @@ class Graph():
             - The second list contains the backlog of query parameters.
         """
 
+        res = [], []  # Default return value
+
         if self.backlog:
+            params  = self.backlog['params']
             queries = self.backlog['queries']
-            params = self.backlog['params']
+
+            # Clear backlog
             self.backlog = {'queries': [], 'params': []}
-            print("clear_backlog returning:")
-            print(f"queries: {queries}")
-            print(f"params: {params}")
-            return queries, params
-        else:
-            # Return empty lists if backlog is not initialized or empty
-            return [], []
+
+            logging.debug(f"Backlog queries: {queries}")
+            logging.debug(f"Backlog params: {params}")
+
+            # Set return value
+            res = queries, params
+
+        logging.debug("Backlog cleared")
+
+        return res
 
 
     def _query(self, q: str, params: Optional[dict] = None) -> QueryResult:
@@ -143,9 +149,7 @@ class Graph():
 
         result_set = self.g.query(q, params)
 
-        print(f"In _query, self.backlog: {self.backlog}")
         if self.backlog is not None:
-            print("Graph backlog is enabled")
             # Check if any change occurred in the query results
             change_detected = any(
                 getattr(result_set, attr) > 0
@@ -155,12 +159,12 @@ class Graph():
                     'properties_removed', 'relationships_created'
                 ]
             )
-            print(f"change_detected: {change_detected}")
+            logging.info(f"change_detected: {change_detected}")
 
             # Append the query and parameters to the backlog if changes occurred
             if change_detected:
-                print(f"logging queries: {q}")
-                print(f"logging params: {params}")
+                logging.debug(f"logging queries: {q}")
+                logging.debug(f"logging params: {params}")
                 self.backlog['queries'].append(q)
                 self.backlog['params'].append(params)
 
@@ -498,7 +502,7 @@ class Graph():
                MATCH (f:File {path: file['path'], name: file['name'], ext: file['ext']})
                WITH collect(f) AS Fs
                UNWIND Fs AS f
-               MATCH (f)-[:DEFINES]->(e)
+               OPTIONAL MATCH (f)-[:DEFINES]->(e)
                WITH Fs, collect(e) AS Es
                WITH Fs + Es AS entities
                UNWIND entities AS e
@@ -669,20 +673,6 @@ class Graph():
 
         s = res.result_set[0][0]
         return self._struct_from_node(s)
-
-    def set_graph_commit(self, commit_hash: str) -> None:
-        """Save processed commit hash to the DB"""
-
-        # connect to DB
-
-        # Set STRING key {FalkorDB}_commit = commit_hash
-        self.db.connection.set('{' + self.g.name + '}' + '_commit', commit_hash)
-
-    def get_graph_commit(self) -> str:
-        """Get the current commit the graph is at"""
-
-        return self.db.connection.get('{' + self.g.name + '}' + '_commit')
-
 
     def rerun_query(self, q: str, params: dict) -> QueryResult:
         """

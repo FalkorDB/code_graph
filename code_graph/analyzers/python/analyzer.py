@@ -75,7 +75,7 @@ class PythonAnalyzer(AbstractAnalyzer):
 
         return (c, inherited_classes)
 
-    def process_function_definition(self, node: Node, path: Path) -> Function:
+    def process_function_definition(self, node: Node, path: Path, source_code: str) -> Function:
         """
         Processes a function definition node from the syntax tree and extracts relevant information.
 
@@ -154,7 +154,8 @@ class PythonAnalyzer(AbstractAnalyzer):
         ret_type = return_type.text.decode('utf-8') if return_type else None
 
         # Create Function object
-        f = Function(str(path), function_name, docstring, ret_type, '', start_line, end_line)
+        src = source_code[node.start_byte:node.end_byte]
+        f = Function(str(path), function_name, docstring, ret_type, src, start_line, end_line)
 
         # Add arguments to Function object
         for arg in args:
@@ -163,7 +164,7 @@ class PythonAnalyzer(AbstractAnalyzer):
         return f
 
     def first_pass_traverse(self, parent: Union[File,Class,Function], node: Node,
-                            path: Path, graph: Graph) -> None:
+                            path: Path, graph: Graph, source_code: str) -> None:
         """
         Recursively traverses a syntax tree node, processes class and function definitions,
         and connects them in a graph representation.
@@ -198,7 +199,7 @@ class PythonAnalyzer(AbstractAnalyzer):
             graph.add_class(entity)
 
         elif node.type == "function_definition":
-            entity = self.process_function_definition(node, path)
+            entity = self.process_function_definition(node, path, source_code)
             # Add Function object to the graph
             graph.add_function(entity)
 
@@ -209,7 +210,7 @@ class PythonAnalyzer(AbstractAnalyzer):
 
         # Recursivly visit child nodes
         for child in node.children:
-            self.first_pass_traverse(parent, child, path, graph)
+            self.first_pass_traverse(parent, child, path, graph, source_code)
 
     def first_pass(self, path: Path, f: io.TextIOWrapper, graph:Graph) -> None:
         """
@@ -231,11 +232,16 @@ class PythonAnalyzer(AbstractAnalyzer):
         graph.add_file(file)
 
         # Parse file
-        content = f.read()
-        tree = self.parser.parse(content)
+        source_code = f.read()
+        tree = self.parser.parse(source_code)
+        try:
+            source_code = source_code.decode('utf-8')
+        except Exception as e:
+            logger.error(f"Failed decoding source code: {e}")
+            source_code = ''
 
         # Walk thought the AST
-        self.first_pass_traverse(file, tree.root_node, path, graph)
+        self.first_pass_traverse(file, tree.root_node, path, graph, source_code)
 
     def process_function_call(self, node) -> Optional[str]:
         """
@@ -324,7 +330,7 @@ class PythonAnalyzer(AbstractAnalyzer):
             graph.connect_entities('INHERITS', cls.id, _super_class.id)
 
     def second_pass_traverse(self, parent: Union[File, Class, Function],
-                             node: Node, path: Path, graph: Graph) -> None:
+                             node: Node, path: Path, graph: Graph, source_code: str) -> None:
         """
         Traverse the AST nodes during the second pass and process each node accordingly.
 
@@ -341,7 +347,9 @@ class PythonAnalyzer(AbstractAnalyzer):
             parent = cls
 
         elif node.type == "function_definition":
-            func = self.process_function_definition(node, path)
+            # TODO: simply extract function name, no need to parse entire function
+            # see C analyzer
+            func = self.process_function_definition(node, path, source_code)
             parent = graph.get_function_by_name(func.name)
         elif node.type == "call":
             callee = self.process_function_call(node)
@@ -350,7 +358,7 @@ class PythonAnalyzer(AbstractAnalyzer):
 
         # Recursivly visit child nodes
         for child in node.children:
-            self.second_pass_traverse(parent, child, path, graph)
+            self.second_pass_traverse(parent, child, path, graph, source_code)
 
     def second_pass(self, path: Path, f: io.TextIOWrapper, graph: Graph) -> None:
         """
@@ -375,10 +383,10 @@ class PythonAnalyzer(AbstractAnalyzer):
 
         try:
             # Parse file
-            content = f.read()
-            tree = self.parser.parse(content)
+            source_code = f.read()
+            tree = self.parser.parse(source_code)
 
             # Walk thought the AST
-            self.second_pass_traverse(file, tree.root_node, path, graph)
+            self.second_pass_traverse(file, tree.root_node, path, graph, source_code)
         except Exception as e:
             logger.error(f"Failed to process file {path}: {e}")

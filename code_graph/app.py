@@ -387,8 +387,6 @@ def create_app():
             'info': stats
         }
 
-        print(f"response: {response}")
-
         return jsonify(response), 200
 
     @app.route('/find_paths', methods=['POST'])
@@ -478,6 +476,29 @@ def create_app():
         response = { 'status': 'success', 'unreachables ': unreachable_entities }
 
         return jsonify(response), 200
+
+    @app.route('/chat', methods=['POST'])
+    def chat():
+        # Get JSON data from the request
+        data = request.get_json()
+
+        # Validate 'repo' parameter
+        repo = data.get('repo')
+        if repo is None:
+            return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+
+        # Get optional 'label' and 'relation' parameters
+        msg = data.get('msg')
+        if msg is None:
+            return jsonify({'status': f'Missing mandatory parameter "msg"'}), 400
+
+        answer = ask(repo, msg)
+
+        # Create and return a successful response
+        response = { 'status': 'success', 'response': answer }
+
+        return jsonify(response), 200
+
 
     return app
 

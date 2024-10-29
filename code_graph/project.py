@@ -1,14 +1,19 @@
+import os
 import shutil
+import logging
 import validators
 import subprocess
 from git import Repo
+from .info import *
 from pathlib import Path
 from .graph import Graph
-from .info import save_repo_info
 from typing import Optional, List
 from urllib.parse import urlparse
 from .analyzers import SourceAnalyzer
-from .git_utils import build_commit_graph
+from .git_utils import build_commit_graph, GitGraph
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def _clone_source(url: str, name: str) -> Path:
     # path to local repositories
@@ -33,9 +38,10 @@ def _clone_source(url: str, name: str) -> Path:
 
 class Project():
     def __init__(self, name: str, path: Path, url: Optional[str]):
-        self.url  = url
-        self.name = name
-        self.path = path
+        self.url   = url
+        self.name  = name
+        self.path  = path
+        self.graph = Graph(name)
 
         if url is not None:
             save_repo_info(name, url)
@@ -54,7 +60,9 @@ class Project():
         return cls(name, path, url)
 
     @classmethod
-    def from_local_repository(cls, path: Path):
+    def from_local_repository(cls, path: Path|str):
+        path = Path(path) if isinstance(path, str) else path
+
         # Validate path exists
         if not path.exists():
             raise Exception(f"missing path: {path}")
@@ -68,11 +76,36 @@ class Project():
 
         return cls(name, path, url)
 
-    def analyze_sources(self, ignore: Optional[List[str]] = []):
-        g = Graph(self.name)
+    def analyze_sources(self, ignore: Optional[List[str]] = []) -> Graph:
         analyzer = SourceAnalyzer()
-        analyzer.analyze(self.path, g, ignore)
+        analyzer.analyze(self.path, self.graph, ignore)
 
-    def process_git_history(self, ignore: Optional[List[str]] = []):
-        build_commit_graph(self.path, self.name, ignore)
+        try:
+            # Save processed commit hash to the DB
+            repo = Repo(self.path)
+            current_commit = repo.head.commit
+            set_repo_commit(self.name, current_commit.hexsha)
+        except Exception:
+            # Probably not .git folder is missing
+            pass
+
+        return self.graph
+
+    def process_git_history(self, ignore: Optional[List[str]] = []) -> GitGraph:
+        logging.info(f"processing {self.name} git commit history")
+
+        # Save original working directory for later restore
+        original_dir = Path.cwd()
+
+        # change working directory to local repository
+        logging.info(f"Switching current working directory to: {self.path}")
+        os.chdir(self.path)
+
+        git_graph = build_commit_graph(self.path, self.name, ignore)
+
+        # Restore original working directory
+        logging.info(f"Restoring current working directory to: {original_dir}")
+        os.chdir(original_dir)
+
+        return git_graph
 

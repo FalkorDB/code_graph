@@ -6,6 +6,9 @@ from typing import Optional, Dict
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
+def _repo_info_key(repo_name: str) -> str:
+    return f"{{{repo_name}}}_info"
+
 def get_redis_connection() -> redis.Redis:
     """
     Establishes a connection to Redis using environment variables.
@@ -26,6 +29,43 @@ def get_redis_connection() -> redis.Redis:
         raise
 
 
+def set_repo_commit(repo_name: str, commit_hash: str) -> None:
+    """Save processed commit hash to the DB"""
+
+    try:
+        r = get_redis_connection()
+        key = _repo_info_key(repo_name)  # Safely format the key
+
+        # Save the repository URL
+        r.hset(key, 'commit', commit_hash)
+        logging.info(f"Repository set current commit to: {commit_hash}")
+
+    except Exception as e:
+        logging.error(f"Error saving repo info for '{repo_name}': {e}")
+        raise
+
+
+def get_repo_commit(repo_name: str) -> str:
+    """Get the current commit the repo is at"""
+
+    try:
+        r = get_redis_connection()
+        key = _repo_info_key(repo_name)
+
+        # Retrieve all information about the repository
+        commit_hash = r.hget(key, "commit")
+        if not commit_hash:
+            logging.warning(f"Failed to retrieve {repo_name} current commit hash")
+            return None
+
+        logging.info(f"Repository current commit hash: {commit_hash}")
+        return commit_hash
+
+    except Exception as e:
+        logging.error(f"Error retrieving '{repo_name}' current commit hash: {e}")
+        raise
+
+
 def save_repo_info(repo_name: str, repo_url: str) -> None:
     """
     Saves repository information (URL) to Redis under a hash named {repo_name}_info.
@@ -37,7 +77,7 @@ def save_repo_info(repo_name: str, repo_url: str) -> None:
 
     try:
         r = get_redis_connection()
-        key = f"{{{repo_name}}}_info"  # Safely format the key
+        key = _repo_info_key(repo_name)
 
         # Save the repository URL
         r.hset(key, 'repo_url', repo_url)
@@ -59,7 +99,7 @@ def get_repo_info(repo_name: str) -> Optional[Dict[str, str]]:
     """
     try:
         r = get_redis_connection()
-        key = f"{{{repo_name}}}_info"
+        key = _repo_info_key(repo_name)
         
         # Retrieve all information about the repository
         repo_info = r.hgetall(key)

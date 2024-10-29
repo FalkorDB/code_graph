@@ -1,6 +1,10 @@
 import os
+import logging
 from falkordb import FalkorDB, Node
 from typing import List, Optional
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
 
 class GitGraph():
     """
@@ -40,6 +44,9 @@ class GitGraph():
         """
             Add a new commit to the graph
         """
+
+        logging.info(f"Adding commit {commit_hash}: {message}")
+
         q = "MERGE (c:Commit {hash: $hash, author: $author, message: $message, date: $date})"
         params = {'hash': commit_hash, 'author': author, 'message': message, 'date': date}
         self.g.query(q, params)
@@ -55,6 +62,8 @@ class GitGraph():
         return [self._commit_from_node(row[0]) for row in result_set]
 
     def get_commits(self, hashes: List[str]) -> List[dict]:
+        logging.info(f"Searching for commits {hashes}")
+
         q = """MATCH (c:Commit)
                WHERE c.hash IN $hashes
                RETURN c"""
@@ -67,12 +76,16 @@ class GitGraph():
             commit = self._commit_from_node(row[0])
             commits.append(commit)
 
+        logging.info(f"retrived commits: {commits}")
         return commits
 
     def connect_commits(self, child: str, parent: str) -> None:
         """
             connect commits via both PARENT and CHILD edges
         """
+
+        logging.info(f"Connecting commits {child} -PARENT-> {parent}")
+        logging.info(f"Connecting commits {parent} -CHILD-> {child}")
 
         q = """MATCH (child :Commit {hash: $child_hash}), (parent :Commit {hash: $parent_hash})
                MERGE (child)-[:PARENT]->(parent)

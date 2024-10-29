@@ -2,15 +2,14 @@ import os
 import unittest
 from git import Repo
 from code_graph import (
-    switch_commit,
-    build_commit_graph,
-    SourceAnalyzer,
-    Graph
+    Graph,
+    Project,
+    switch_commit
 )
 
-repo      = None
-graph     = None
-git_graph = None
+repo      = None  # repository
+graph     = None  # code graph
+git_graph = None  # git graph
 
 class Test_Git_History(unittest.TestCase):
     @classmethod
@@ -30,34 +29,13 @@ class Test_Git_History(unittest.TestCase):
         # Append 'git_repo' to the current directory
         repo_dir = os.path.join(current_dir, 'git_repo')
 
+        # Checkout HEAD commit
         repo = Repo(repo_dir)
         repo.git.checkout("HEAD")
 
-        # Create source code analyzer
-        analyzer  = SourceAnalyzer()
-        graph     = analyzer.analyze_local_repository(str(repo_dir))
-        git_graph = build_commit_graph(repo_dir, 'git_repo')
-
-    def test_git_graph_structure(self):
-        # validate git graph structure
-        c = repo.commit("HEAD")
-
-        while True:
-            commits = git_graph.get_commits([c.hexsha])
-
-            self.assertEqual(len(commits), 1)
-            actual = commits[0]
-
-            self.assertEqual(c.hexsha, actual['hash'])
-            self.assertEqual(c.committed_date, actual['date'])
-            self.assertEqual(c.author.name, actual['author'])
-            self.assertEqual(c.message, actual['message'])
-
-            # Advance to previous commit
-            if len(c.parents) == 0:
-                break
-
-            c = c.parents[0]
+        proj      = Project.from_local_repository(repo_dir)
+        graph     = proj.analyze_sources()
+        git_graph = proj.process_git_history()
 
     def assert_file_not_exists(self, path: str, name: str, ext: str) -> None:
         f = graph.get_file(path, name, ext)
@@ -70,6 +48,27 @@ class Test_Git_History(unittest.TestCase):
         self.assertEqual(f.ext, ext)
         self.assertEqual(f.path, path)
         self.assertEqual(f.name, name)
+
+    def test_git_graph_structure(self):
+        # validate git graph structure
+        c = repo.commit("HEAD")
+
+        while True:
+            commits = git_graph.get_commits([c.hexsha])
+
+            self.assertEqual(len(commits), 1)
+            actual = commits[0]
+
+            self.assertEqual(c.hexsha,         actual['hash'])
+            self.assertEqual(c.message,        actual['message'])
+            self.assertEqual(c.author.name,    actual['author'])
+            self.assertEqual(c.committed_date, actual['date'])
+
+            # Advance to previous commit
+            if len(c.parents) == 0:
+                break
+
+            c = c.parents[0]
 
     def test_git_transitions(self):
         # our test git repo:
@@ -94,7 +93,7 @@ class Test_Git_History(unittest.TestCase):
         self.assert_file_exists("", "a.py", ".py")
         self.assert_file_exists("", "c.py", ".py")
 
-        # b.py shouldn't exists
+        # b.py should NOT exists
         self.assert_file_not_exists("", "b.py", ".py")
 
         #-----------------------------------------------------------------------
