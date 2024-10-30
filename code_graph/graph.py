@@ -241,30 +241,6 @@ class Graph():
             return {'nodes': [], 'edges': []}
 
 
-    def add_class(self, c: Class) -> None:
-        """
-        Adds a class node to the graph database.
-
-        Args:
-            c (Class): The Class object to be added.
-        """
-
-        q = """MERGE (c:Class:Searchable {name: $name, path: $path, src_start: $src_start,
-                               src_end: $src_end})
-               SET c.doc = $doc
-               RETURN ID(c)"""
-
-        params = {
-            'doc': c.doc,
-            'name': c.name,
-            'path': c.path,
-            'src_start': c.src_start,
-            'src_end': c.src_end,
-        }
-
-        res = self._query(q, params)
-        c.id = res.result_set[0][0]
-
     def _class_from_node(self, n: Node) -> Class:
         """
         Create a Class from a graph node
@@ -280,6 +256,31 @@ class Graph():
         c.id = n.id
 
         return c
+
+    def add_class(self, c: Class) -> None:
+        """
+        Adds a class node to the graph database.
+
+        Args:
+            c (Class): The Class object to be added.
+        """
+
+        q = """MERGE (c:Class:Searchable {name: $name, path: $path, src_start: $src_start,
+                               src_end: $src_end})
+               SET c.doc = $doc
+               RETURN c"""
+
+        params = {
+            'doc': c.doc,
+            'name': c.name,
+            'path': c.path,
+            'src_start': c.src_start,
+            'src_end': c.src_end,
+        }
+
+        res  = self._query(q, params)
+        node = res.result_set[0][0]
+        c.id = node.id
 
     def get_class_by_name(self, class_name: str) -> Optional[Class]:
         q = "MATCH (c:Class) WHERE c.name = $name RETURN c LIMIT 1"
@@ -302,35 +303,6 @@ class Graph():
 
         c = res.result_set[0][0]
         return self._class_from_node(c)
-
-    def add_function(self, func: Function) -> None:
-        """
-        Adds a function node to the graph database.
-
-        Args:
-            func (Function): The Function object to be added.
-        """
-
-        q = """MERGE (f:Function:Searchable {path: $path, name: $name,
-                                  src_start: $src_start, src_end: $src_end})
-               SET f.args = $args, f.ret_type = $ret_type, f.src = $src, f.doc = $doc
-               RETURN ID(f)"""
-
-        # Prepare arguments in a more straightforward manner
-        args = [[arg.name, arg.type] for arg in func.args]
-        params = {
-            'src': func.src,
-            'doc': func.doc,
-            'path': func.path,
-            'name': func.name,
-            'src_start': func.src_start,
-            'src_end': func.src_end,
-            'args': args,
-            'ret_type': func.ret_type
-        }
-
-        res = self._query(q, params)
-        func.id = res.result_set[0][0]
 
     def _function_from_node(self, n: Node) -> Function:
         """
@@ -356,7 +328,36 @@ class Graph():
 
         return f
 
-    
+    def add_function(self, func: Function) -> None:
+        """
+        Adds a function node to the graph database.
+
+        Args:
+            func (Function): The Function object to be added.
+        """
+
+        q = """MERGE (f:Function:Searchable {path: $path, name: $name,
+                                  src_start: $src_start, src_end: $src_end})
+               SET f.args = $args, f.ret_type = $ret_type, f.src = $src, f.doc = $doc
+               RETURN f"""
+
+        # Prepare arguments in a more straightforward manner
+        args = [[arg.name, arg.type] for arg in func.args]
+        params = {
+            'src': func.src,
+            'doc': func.doc,
+            'path': func.path,
+            'name': func.name,
+            'src_start': func.src_start,
+            'src_end': func.src_end,
+            'args': args,
+            'ret_type': func.ret_type
+        }
+
+        res     = self._query(q, params)
+        node    = res.result_set[0][0]
+        func.id = node.id
+
     # set functions metadata
     def set_functions_metadata(self, ids: List[int], metadata: List[dict]) -> None:
         assert(len(ids) == len(metadata))
@@ -366,7 +367,8 @@ class Graph():
                WITH $ids[i] AS id, $values[i] AS v
                MATCH (f)
                WHERE ID(f) = id
-               SET f += v"""
+               SET f += v
+               RETURN f"""
         
         params = {'ids': ids, 'values': metadata}
 
@@ -483,11 +485,12 @@ class Graph():
         """
 
         q = """MERGE (f:File:Searchable {path: $path, name: $name, ext: $ext})
-               RETURN ID(f)"""
+               RETURN f"""
         params = {'path': file.path, 'name': file.name, 'ext': file.ext}
 
-        res = self._query(q, params)
-        file.id = res.result_set[0][0]
+        res     = self._query(q, params)
+        node    = res.result_set[0][0]
+        file.id = node.id
 
     def delete_files(self, files: List[dict]) -> tuple[str, dict, List[int]]:
         """
@@ -580,7 +583,8 @@ class Graph():
 
         q = f"""MATCH (src), (dest)
                 WHERE ID(src) = $src_id AND ID(dest) = $dest_id
-                MERGE (src)-[:{relation}]->(dest)"""
+                MERGE (src)-[e:{relation}]->(dest)
+                RETURN e"""
 
         params = {'src_id': src_id, 'dest_id': dest_id}
         self._query(q, params)
@@ -597,35 +601,11 @@ class Graph():
 
         q = """MATCH (caller:Function), (callee:Function)
                WHERE ID(caller) = $caller_id AND ID(callee) = $callee_id
-               MERGE (caller)-[e:CALLS {pos:$pos}]->(callee)"""
+               MERGE (caller)-[e:CALLS {pos:$pos}]->(callee)
+               RETURN e"""
 
         params = {'caller_id': caller_id, 'callee_id': callee_id, 'pos': pos}
         self._query(q, params)
-
-    def add_struct(self, s: Struct) -> None:
-        """
-        Adds a struct node to the graph database.
-
-        Args:
-            s (Struct): The Struct object to be added.
-        """
-
-        q = """MERGE (s:Struct:Searchable {name: $name, path: $path, src_start: $src_start,
-                               src_end: $src_end})
-               SET s.doc = $doc, s.fields = $fields
-               RETURN ID(s)"""
-
-        params = {
-            'doc': s.doc,
-            'name': s.name,
-            'path': s.path,
-            'src_start': s.src_start,
-            'src_end': s.src_end,
-            'fields': s.fields
-        }
-
-        res = self._query(q, params)
-        s.id = res.result_set[0][0]
 
     def _struct_from_node(self, n: Node) -> Struct:
         """
@@ -651,6 +631,32 @@ class Graph():
         s.id = n.id
 
         return s
+
+    def add_struct(self, s: Struct) -> None:
+        """
+        Adds a struct node to the graph database.
+
+        Args:
+            s (Struct): The Struct object to be added.
+        """
+
+        q = """MERGE (s:Struct:Searchable {name: $name, path: $path, src_start: $src_start,
+                               src_end: $src_end})
+               SET s.doc = $doc, s.fields = $fields
+               RETURN s"""
+
+        params = {
+            'doc': s.doc,
+            'name': s.name,
+            'path': s.path,
+            'src_start': s.src_start,
+            'src_end': s.src_end,
+            'fields': s.fields
+        }
+
+        res = self._query(q, params)
+        node = res.result_set[0][0]
+        s.id = node.id
 
     def get_struct_by_name(self, struct_name: str) -> Optional[Struct]:
         q = "MATCH (s:Struct) WHERE s.name = $name RETURN s LIMIT 1"
