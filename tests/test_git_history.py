@@ -85,9 +85,12 @@ class Test_Git_History(unittest.TestCase):
         # commit fac1698da4ee14c215316859e68841ae0b0275b0
         # created a.py
         
-        #-----------------------------------------------------------------------
+        #----------------------------------------------------------------------
+        # Going backwards
+        #----------------------------------------------------------------------
+
         # HEAD commit
-        #-----------------------------------------------------------------------
+        switch_commit('git_repo', 'df8d021dbae077a39693c1e76e8438006d62603e')
 
         # a.py and c.py should exists
         self.assert_file_exists("", "a.py", ".py")
@@ -97,7 +100,7 @@ class Test_Git_History(unittest.TestCase):
         self.assert_file_not_exists("", "b.py", ".py")
 
         #-----------------------------------------------------------------------
-        # commit 5ec6b14612547393e257098e214ae7748ed12c50
+        # df8d02 -> 5ec6b1
         #-----------------------------------------------------------------------
 
         switch_commit('git_repo', '5ec6b14612547393e257098e214ae7748ed12c50')
@@ -108,7 +111,7 @@ class Test_Git_History(unittest.TestCase):
         self.assert_file_exists("", "c.py", ".py")
 
         #-----------------------------------------------------------------------
-        # commit c4332d05bc1b92a33012f2ff380b807d3fbb9c2e
+        # 5ec6b1 -> c4332d
         #-----------------------------------------------------------------------
 
         switch_commit('git_repo', 'c4332d05bc1b92a33012f2ff380b807d3fbb9c2e')
@@ -121,7 +124,7 @@ class Test_Git_History(unittest.TestCase):
         self.assert_file_not_exists("", "c.py", ".py")
 
         #-----------------------------------------------------------------------
-        # commit fac1698da4ee14c215316859e68841ae0b0275b0
+        # c4332d -> fac169
         #-----------------------------------------------------------------------
 
         switch_commit('git_repo', 'fac1698da4ee14c215316859e68841ae0b0275b0')
@@ -133,3 +136,91 @@ class Test_Git_History(unittest.TestCase):
         self.assert_file_not_exists("", "b.py", ".py")
         self.assert_file_not_exists("", "c.py", ".py")
 
+        #----------------------------------------------------------------------
+        # Going forward
+        #----------------------------------------------------------------------
+
+        #-----------------------------------------------------------------------
+        # fac169 -> c4332d0
+        #-----------------------------------------------------------------------
+
+        switch_commit('git_repo', 'c4332d05bc1b92a33012f2ff380b807d3fbb9c2e')
+
+        # only a.py, should exists
+        self.assert_file_exists("", "a.py", ".py")
+
+        # b.py and c.py shouldn't exists
+        self.assert_file_not_exists("", "b.py", ".py")
+        self.assert_file_not_exists("", "c.py", ".py")
+
+        #-----------------------------------------------------------------------
+        # c4332d0 -> 5ec6b14
+        #-----------------------------------------------------------------------
+
+        #import ipdb; ipdb.set_trace()
+        switch_commit('git_repo', '5ec6b14612547393e257098e214ae7748ed12c50')
+
+        # a.py, b.py and c.py should exists
+        self.assert_file_exists("", "a.py", ".py")
+        self.assert_file_exists("", "b.py", ".py")
+        self.assert_file_exists("", "c.py", ".py")
+
+        #-----------------------------------------------------------------------
+        # 5ec6b14 -> HEAD
+        #-----------------------------------------------------------------------
+
+        switch_commit('git_repo', 'df8d021dbae077a39693c1e76e8438006d62603e')
+
+        # a.py and c.py should exists
+        self.assert_file_exists("", "a.py", ".py")
+        self.assert_file_exists("", "c.py", ".py")
+
+        # b.py should NOT exists
+        self.assert_file_not_exists("", "b.py", ".py")
+
+
+    def test_git_multi_commit_transition(self):
+        # our test git repo:
+        #
+        # commit df8d021dbae077a39693c1e76e8438006d62603e (HEAD, main)
+        # removed b.py
+
+        # commit 5ec6b14612547393e257098e214ae7748ed12c50
+        # added both b.py and c.py
+
+        # commit c4332d05bc1b92a33012f2ff380b807d3fbb9c2e
+        # modified a.py
+
+        # commit fac1698da4ee14c215316859e68841ae0b0275b0
+        # created a.py
+
+        # Start at the HEAD commit
+        switch_commit('git_repo', 'df8d021dbae077a39693c1e76e8438006d62603e')
+
+        # a.py and c.py should exists
+        self.assert_file_exists("", "a.py", ".py")
+        self.assert_file_exists("", "c.py", ".py")
+
+        # b.py should NOT exists
+        self.assert_file_not_exists("", "b.py", ".py")
+
+        # Switch over to the very first commit fac1698da4ee14c215316859e68841ae0b0275b0
+
+        switch_commit('git_repo', 'fac1698da4ee14c215316859e68841ae0b0275b0')
+
+        # a.py
+        self.assert_file_exists("", "a.py", ".py")
+
+        # b.py and c.py should NOT exists
+        self.assert_file_not_exists("", "b.py", ".py")
+        self.assert_file_not_exists("", "c.py", ".py")
+
+        # Switch back to HEAD
+        switch_commit('git_repo', 'df8d021dbae077a39693c1e76e8438006d62603e')
+
+        # a.py and c.py should exists
+        self.assert_file_exists("", "a.py", ".py")
+        self.assert_file_exists("", "c.py", ".py")
+
+        # b.py should NOT exists
+        self.assert_file_not_exists("", "b.py", ".py")

@@ -1,5 +1,6 @@
 import os
 import logging
+from git import Commit
 from falkordb import FalkorDB, Node
 from typing import List, Optional
 
@@ -40,15 +41,18 @@ class GitGraph():
                 'author':  node.properties['author'],
                 'message': node.properties['message']}
 
-    def add_commit(self, commit_hash: str, author: str, message: str, date: int) -> None:
+    def add_commit(self, commit: Commit) -> None:
         """
             Add a new commit to the graph
         """
-
-        logging.info(f"Adding commit {commit_hash}: {message}")
+        date    = commit.committed_date
+        author  = commit.author.name
+        hexsha  = commit.hexsha
+        message = commit.message
+        logging.info(f"Adding commit {hexsha}: {message}")
 
         q = "MERGE (c:Commit {hash: $hash, author: $author, message: $message, date: $date})"
-        params = {'hash': commit_hash, 'author': author, 'message': message, 'date': date}
+        params = {'hash': hexsha, 'author': author, 'message': message, 'date': date}
         self.g.query(q, params)
 
     def list_commits(self) -> List[Node]:
@@ -78,6 +82,18 @@ class GitGraph():
 
         logging.info(f"retrived commits: {commits}")
         return commits
+
+    def get_child_commit(self, parent) -> Optional[dict]:
+        q = """MATCH (c:Commit {hash: $parent})-[:CHILD]->(child: Commit)
+               RETURN child"""
+
+        res = self.g.query(q, {'parent': parent}).result_set
+
+        if len(res) > 0:
+            assert(len(res) == 1)
+            return self._commit_from_node(res[0][0])
+
+        return None
 
     def connect_commits(self, child: str, parent: str) -> None:
         """
@@ -119,7 +135,7 @@ class GitGraph():
         q = """MATCH (parent :Commit {hash: $parent})-[e:CHILD]->(child :Commit {hash: $child})
                SET e.queries = $queries, e.params = $params"""
 
-        _params = {'child': child, 'parent': parent, 'queries': queries}
+        _params = {'child': child, 'parent': parent, 'queries': queries, 'params': params}
 
         self.g.query(q, _params)
 

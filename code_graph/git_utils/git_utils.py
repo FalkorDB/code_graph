@@ -78,8 +78,9 @@ def build_commit_graph(
         GitGraph: Graph object representing the commit history.
     """
 
-    # Clone graph into a temporary graph
+    # Copy the graph into a temporary graph
     logging.info(f"Cloning source graph {repo_name} -> {repo_name}_tmp")
+    # Will be deleted at the end of this function
     g = Graph(repo_name).clone(repo_name + "_tmp")
     g.enable_backlog()
 
@@ -88,25 +89,31 @@ def build_commit_graph(
     supported_types = analyzer.supported_types()
 
     # Initialize with the current commit
+    # Save current git for later restoration
     repo = Repo('.')
     current_commit = repo.head.commit
     current_commit_hexsha = current_commit.hexsha
 
-    # add commit to the git graph
-    git_graph.add_commit(current_commit.hexsha, current_commit.author.name,
-                 current_commit.message, current_commit.committed_date)
+    # Add commit to the git graph
+    git_graph.add_commit(current_commit)
 
-    while len(current_commit.parents) > 0:
-        prev_commit = current_commit.parents[0]
+    #--------------------------------------------------------------------------
+    # Process git history going backwards
+    #--------------------------------------------------------------------------
+
+    logging.info("Computing transition queries moving backwards")
+
+    child_commit = current_commit
+    while len(child_commit.parents) > 0:
+        parent_commit = child_commit.parents[0]
 
         # add commit to the git graph
-        git_graph.add_commit(prev_commit.hexsha, prev_commit.author.name,
-                 prev_commit.message, prev_commit.committed_date)
+        git_graph.add_commit(parent_commit)
 
         # connect child parent commits relation
-        git_graph.connect_commits(current_commit.hexsha, prev_commit.hexsha)
+        git_graph.connect_commits(child_commit.hexsha, parent_commit.hexsha)
 
-        # represents the changes going backward!
+        # Represents the changes going backward!
         # e.g. which files need to be deleted when moving back one commit
         #
         # if we were to switch "direction" going forward
@@ -116,18 +123,18 @@ def build_commit_graph(
 
         # Process file changes in this commit
         logging.info(f"""Computing diff between
-            child {current_commit.hexsha}: {current_commit.message}
-            and {prev_commit.hexsha}: {prev_commit.message}""")
+            child {child_commit.hexsha}: {child_commit.message}
+            and {parent_commit.hexsha}: {parent_commit.message}""")
 
-        diff = current_commit.diff(prev_commit)
+        diff = child_commit.diff(parent_commit)
         added, deleted, modified = classify_changes(diff, ignore_list)
 
-        # Use the repo's git interface to checkout the prev commit
-        logging.info(f"Checking out commit: {prev_commit.hexsha}")
-        repo.git.checkout(prev_commit.hexsha)
+        # Checkout prev commit
+        logging.info(f"Checking out commit: {parent_commit.hexsha}")
+        repo.git.checkout(parent_commit.hexsha)
 
         #-----------------------------------------------------------------------
-        # apply changes
+        # Apply changes going backwards
         #-----------------------------------------------------------------------
 
         # apply deletions
@@ -153,33 +160,107 @@ def build_commit_graph(
                 analyzer.analyze_file(new_file, g)
 
         queries, params = g.clear_backlog()
+
+        # Save transition queries to the git graph
         if len(queries) > 0:
             assert(len(queries) == len(params))
 
             # Covert parameters from dict to JSON formatted string
             params = [json.dumps(p) for p in params]
 
-            # log transitions
+            # Log transitions
             logging.debug(f"""Save graph transition from
-                             commit: {current_commit.hexsha}
+                             commit: {child_commit.hexsha}
                              to
-                             commit: {prev_commit.hexsha}
+                             commit: {parent_commit.hexsha}
                              Queries: {queries}
                              Parameters: {params}
                           """)
 
-            git_graph.set_parent_transition(current_commit.hexsha,
-                                            prev_commit.hexsha, queries, params)
+            git_graph.set_parent_transition(child_commit.hexsha,
+                                            parent_commit.hexsha, queries, params)
         # advance to the next commit
-        current_commit = prev_commit
+        child_commit = parent_commit
+
+    #--------------------------------------------------------------------------
+    # Process git history going forward
+    #--------------------------------------------------------------------------
+
+    logging.info("Computing transition queries moving forward")
+    parent_commit = child_commit
+    while parent_commit.hexsha != current_commit_hexsha:
+        child_commit = git_graph.get_child_commit(parent_commit.hexsha)
+        child_commit = repo.commit(child_commit['hash'])
+
+        # Represents the changes going forward
+        # e.g. which files need to be deleted when moving forward one commit
+
+        # Process file changes in this commit
+        logging.info(f"""Computing diff between
+            child {parent_commit.hexsha}: {parent_commit.message}
+            and {child_commit.hexsha}: {child_commit.message}""")
+
+        diff = parent_commit.diff(child_commit)
+        added, deleted, modified = classify_changes(diff, ignore_list)
+
+        # Checkout child commit
+        logging.info(f"Checking out commit: {child_commit.hexsha}")
+        repo.git.checkout(child_commit.hexsha)
+
+        #-----------------------------------------------------------------------
+        # Apply changes going forward
+        #-----------------------------------------------------------------------
+
+        # apply deletions
+        # TODO: a bit of a waste, compute in previous loop
+        deleted_files = []
+        for deleted_file_path in deleted:
+            _ext = os.path.splitext(deleted_file_path)[1]
+            if _ext in supported_types:
+                _path = os.path.dirname(deleted_file_path)
+                _name = os.path.basename(deleted_file_path)
+                deleted_files.append(
+                        {'path': _path, 'name': _name, 'ext' : _ext})
+
+        # remove deleted files from the graph
+        if len(deleted_files) > 0:
+            logging.info(f"Removing deleted files: {deleted_files}")
+            g.delete_files(deleted_files)
+
+        if len(added) > 0:
+            for new_file in added:
+                # New file been added
+                logging.info(f"Introducing a new source file: {new_file}")
+                analyzer.analyze_file(new_file, g)
+
+        queries, params = g.clear_backlog()
+
+        # Save transition queries to the git graph
+        if len(queries) > 0:
+            assert(len(queries) == len(params))
+
+            # Covert parameters from dict to JSON formatted string
+            params = [json.dumps(p) for p in params]
+
+            # Log transitions
+            logging.debug(f"""Save graph transition from
+                             commit: {parent_commit.hexsha}
+                             to
+                             commit: {child_commit.hexsha}
+                             Queries: {queries}
+                             Parameters: {params}
+                          """)
+
+            git_graph.set_child_transition(child_commit.hexsha,
+                                            parent_commit.hexsha, queries, params)
+        # advance to the child_commit
+        parent_commit = child_commit
 
     logging.debug("Done processing repository commit history")
 
-    # clean up
-
-    # Restore original commit
-    logging.debug(f"Restoring repo to its original commit: {current_commit_hexsha}")
-    repo.git.checkout(current_commit_hexsha)
+    #--------------------------------------------------------------------------
+    # Clean up
+    #--------------------------------------------------------------------------
 
     # Delete temporaty graph
     g.disable_backlog()
@@ -267,14 +348,20 @@ def switch_commit(repo: str, to: str) -> dict[str, dict[str, list]]:
     current_commit, new_commit = (commits if commits[0]['hash'] == current_hash else reversed(commits))
 
     # Determine the direction of the switch (forward or backward in the commit history)
+    child_commit = None
+    parent_commit = None
     if current_commit['date'] > new_commit['date']:
-        logging.info(f"Moving backward from {current_commit['hash']} to {new_commit['hash']}")
+        child_commit  = current_commit
+        parent_commit = new_commit
+        logging.info(f"Moving backward from {child_commit['hash']} to {parent_commit['hash']}")
         # Get the transitions (queries and parameters) for moving backward
-        queries, params = git_graph.get_parent_transitions(current_commit['hash'], new_commit['hash'])
+        queries, params = git_graph.get_parent_transitions(child_commit['hash'], parent_commit['hash'])
     else:
-        logging.info(f"Moving forward from {current_commit['hash']} to {new_commit['hash']}")
+        child_commit  = new_commit
+        parent_commit = current_commit
+        logging.info(f"Moving forward from {parent_commit['hash']} to {child_commit['hash']}")
         # Get the transitions (queries and parameters) for moving forward
-        queries, params = git_graph.get_child_transitions(current_commit['hash'], new_commit['hash'])
+        queries, params = git_graph.get_child_transitions(child_commit['hash'], parent_commit['hash'])
 
     # Apply each transition query with its respective parameters
     for q, p in zip(queries, params):
