@@ -1,17 +1,18 @@
 import os
-import tempfile
+import shutil
 import concurrent.futures
 
 from git import Repo
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from ..graph import Graph
 from .c.analyzer import CAnalyzer
 from .python.analyzer import PythonAnalyzer
 
 import logging
-logger = logging.getLogger('code_graph')
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
 
 # List of available analyzers
 analyzers = {'.c': CAnalyzer(),
@@ -19,29 +20,33 @@ analyzers = {'.c': CAnalyzer(),
              '.py': PythonAnalyzer()}
 
 class SourceAnalyzer():
-    def __init__(self, host: str = 'localhost', port: int = 6379,
-                 username: Optional[str] = None, password: Optional[str] = None) -> None:
 
-        self.host      = host
-        self.port      = port
-        self.username  = username
-        self.password  = password
+    def supported_types(self) -> List[str]:
+        """
+        """
+        return list(analyzers.keys())
 
-    def first_pass(self, base: str, root: str,
-                   executor: concurrent.futures.Executor) -> None:
+    def first_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Perform the first pass analysis on source files in the given directory tree.
 
         Args:
-            base (str): The base directory path to be used for relative paths.
-            root (str): The root directory path to start the analysis from.
+            ignore (list(str)): List of paths to ignore
             executor (concurrent.futures.Executor): The executor to run tasks concurrently.
         """
 
-        print(f'root: {root}')
         tasks = []
-        for dirpath, dirnames, filenames in os.walk(root):
-            logger.info(f'Processing directory: {dirpath}')
+        for dirpath, dirnames, filenames in os.walk("."):
+
+            # skip current directory if it is within the ignore list
+            if dirpath in ignore:
+                # in-place clear dirnames to prevent os.walk from recursing into
+                # any of the nested directories
+                logging.info(f'ignoring directory: {dirpath}')
+                dirnames[:] = []
+                continue
+
+            logging.info(f'Processing directory: {dirpath}')
 
             # Process each file in the current directory
             for filename in filenames:
@@ -50,16 +55,15 @@ class SourceAnalyzer():
                 # Skip none supported files
                 ext = file_path.suffix
                 if ext not in analyzers:
-                    logger.info(f"Skipping none supported file {file_path}")
+                    logging.info(f"Skipping none supported file {file_path}")
                     continue
 
-                logger.info(f'Processing file: {file_path}')
+                logging.info(f'Processing file: {file_path}')
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
-                        relative_path = str(path).replace(base, '')
                         ext = path.suffix
-                        analyzers[ext].first_pass(Path(relative_path), f, self.graph)
+                        analyzers[ext].first_pass(path, f, self.graph)
 
                 process_file(file_path)
                 #task = executor.submit(process_file, file_path)
@@ -68,8 +72,7 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         #concurrent.futures.wait(tasks)
 
-    def second_pass(self, base: str, root: str,
-                    executor: concurrent.futures.Executor) -> None:
+    def second_pass(self, ignore: List[str], executor: concurrent.futures.Executor) -> None:
         """
         Recursively analyze the contents of a directory.
 
@@ -80,8 +83,17 @@ class SourceAnalyzer():
         """
 
         tasks = []
-        for dirpath, dirnames, filenames in os.walk(root):
-            logger.info(f'Processing directory: {dirpath}')
+        for dirpath, dirnames, filenames in os.walk("."):
+
+            # skip current directory if it is within the ignore list
+            if dirpath in ignore:
+                # in-place clear dirnames to prevent os.walk from recursing into
+                # any of the nested directories
+                logging.info(f'ignoring directory: {dirpath}')
+                dirnames[:] = []
+                continue
+
+            logging.info(f'Processing directory: {dirpath}')
 
             # Process each file in the current directory
             for filename in filenames:
@@ -92,13 +104,12 @@ class SourceAnalyzer():
                 if ext not in analyzers:
                     continue
 
-                logger.info(f'Processing file: {file_path}')
+                logging.info(f'Processing file: {file_path}')
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
-                        relative_path = str(path).replace(base, '')
                         ext = path.suffix
-                        analyzers[ext].second_pass(Path(relative_path), f, self.graph)
+                        analyzers[ext].second_pass(path, f, self.graph)
 
                 task = executor.submit(process_file, file_path)
                 tasks.append(task)
@@ -106,39 +117,66 @@ class SourceAnalyzer():
         # Wait for all tasks to complete
         concurrent.futures.wait(tasks)
 
-    def analyze_sources(self, path: Path) -> None:
+    def analyze_file(self, path: Path, graph: Graph) -> None:
+        ext = path.suffix
+        logging.info(f"analyze_file: path: {path}")
+        logging.info(f"analyze_file: ext: {ext}")
+        if ext not in analyzers:
+            return
+
+        with open(path, 'rb') as f:
+            analyzers[ext].first_pass(path, f, graph)
+            analyzers[ext].second_pass(path, f, graph)
+
+    def analyze_sources(self, ignore: List[str]) -> None:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # First pass analysis of the source code
-            self.first_pass(path, path, executor)
+            self.first_pass(ignore, executor)
 
             # Second pass analysis of the source code
-            self.second_pass(path, path, executor)
+            self.second_pass(ignore, executor)
 
-    def analyze_repository(self, url: str) -> None:
+    def analyze(self, path: str, g: Graph, ignore: Optional[List[str]] = []) -> None:
         """
-        Analyze a Git repository given its URL.
+        Analyze path.
 
         Args:
-            url (str): The URL of the Git repository to analyze.
+            path (str): Path to a local folder containing source files to process
+            ignore (List(str)): List of paths to skip
         """
 
-        # Extract repository name from the URL
-        components = url[:url.rfind('.')].split('/')
-        n = len(components)
-        repo_name = f'{components[n-2]}/{components[-1]}'
-        logger.debug(f'repo_name: {repo_name}')
-        #repo_name = url[url.rfind('/')+1:url.rfind('.')]
+        # Save original working directory for later restore
+        original_dir = Path.cwd()
+
+        # change working directory to path
+        os.chdir(path)
 
         # Initialize the graph and analyzer
-        self.graph = Graph(repo_name, self.host, self.port, self.username,
-                           self.password)
+        self.graph = g
 
-        # Create a temporary directory for cloning the repository
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Cloning repository {url} to {temp_dir}")
-            repo = Repo.clone_from(url, temp_dir)
+        # Analyze source files
+        self.analyze_sources(ignore)
 
-            # Analyze source files
-            self.analyze_sources(temp_dir)
+        logging.info("Done analyzing path")
 
-        logger.info("Done processing repository")
+        # Restore original working dir
+        os.chdir(original_dir)
+
+    def analyze_local_repository(self, path: str, ignore: Optional[List[str]] = []) -> Graph:
+        """
+        Analyze a local Git repository.
+
+        Args:
+            path (str): Path to a local git repository
+            ignore (List(str)): List of paths to skip
+        """
+
+        self.analyze_local_folder(path, ignore)
+
+        # Save processed commit hash to the DB
+        repo = Repo(path)
+        head = repo.commit("HEAD")
+        self.graph.set_graph_commit(head.hexsha)
+
+        return self.graph
+

@@ -1,22 +1,33 @@
+import os
 import unittest
 from pathlib import Path
 
-from code_graph import *
+from code_graph import SourceAnalyzer, File, Struct, Function, Graph
 
 class Test_C_Analyzer(unittest.TestCase):
     def test_analyzer(self):
         path = Path(__file__).parent
         analyzer = SourceAnalyzer()
 
-        g = Graph('test_c')
-        analyzer.graph = g
-        analyzer.analyze_sources(str(path))
+        # Get the current file path
+        current_file_path = os.path.abspath(__file__)
 
-        f = g.get_file('/source_files/c', 'src.c', '.c')
-        self.assertEqual(File('/source_files/c', 'src.c', '.c'), f)
+        # Get the directory of the current file
+        current_dir = os.path.dirname(current_file_path)
+
+        # Append 'source_files/c' to the current directory
+        path = os.path.join(current_dir, 'source_files')
+        path = os.path.join(path, 'c')
+        path = str(path)
+
+        g = Graph("c")
+        analyzer.analyze(path, g)
+
+        f = g.get_file('', 'src.c', '.c')
+        self.assertEqual(File('', 'src.c', '.c'), f)
 
         s = g.get_struct_by_name('exp')
-        expected_s = Struct('/source_files/c/src.c', 'exp', '', 9, 13)
+        expected_s = Struct('src.c', 'exp', '', 9, 13)
         expected_s.add_field('i', 'int')
         expected_s.add_field('f', 'float')
         expected_s.add_field('data', 'char[]')
@@ -24,7 +35,7 @@ class Test_C_Analyzer(unittest.TestCase):
 
         add = g.get_function_by_name('add')
 
-        expected_add = Function('/source_files/c/src.c', 'add', '', 'int', '', 0, 7)
+        expected_add = Function('src.c', 'add', '', 'int', '', 0, 7)
         expected_add.add_argument('a', 'int')
         expected_add.add_argument('b', 'int')
         self.assertEqual(expected_add, add)
@@ -32,7 +43,7 @@ class Test_C_Analyzer(unittest.TestCase):
 
         main = g.get_function_by_name('main')
 
-        expected_main = Function('/source_files/c/src.c', 'main', '', 'int', '', 15, 18)
+        expected_main = Function('src.c', 'main', '', 'int', '', 15, 18)
         expected_main.add_argument('argv', 'const char**')
         expected_main.add_argument('argc', 'int')
         self.assertEqual(expected_main, main)
@@ -48,3 +59,4 @@ class Test_C_Analyzer(unittest.TestCase):
         self.assertEqual(len(callers), 2)
         self.assertIn('add', callers)
         self.assertIn('main', callers)
+
