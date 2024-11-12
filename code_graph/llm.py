@@ -1,7 +1,7 @@
 import logging
 
 from graphrag_sdk.models.openai import OpenAiGenerativeModel
-from graphrag_sdk.models.gemini import GeminiGenerativeModel
+#from graphrag_sdk.models.gemini import GeminiGenerativeModel
 
 from graphrag_sdk import (
     Ontology,
@@ -193,14 +193,14 @@ def _create_kg_agent(repo_name: str):
     global ontology
 
     openapi_model    = OpenAiGenerativeModel("gpt-4o")
-    gemini_model     = GeminiGenerativeModel("gemini-1.5-flash-001")
-    gemini_model_pro = GeminiGenerativeModel("gemini-1.5-pro")
+    #gemini_model     = GeminiGenerativeModel("gemini-1.5-flash-001")
+    #gemini_model_pro = GeminiGenerativeModel("gemini-1.5-pro")
 
     #ontology = _define_ontology()
     code_graph_kg = KnowledgeGraph(
         name=repo_name,
         ontology=ontology,
-        model_config=KnowledgeGraphModelConfig.with_model(gemini_model),
+        model_config=KnowledgeGraphModelConfig.with_model(openapi_model),
     )
 
     return code_graph_kg.chat_session()

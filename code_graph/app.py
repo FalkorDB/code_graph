@@ -2,6 +2,7 @@ import os
 import datetime
 from code_graph import *
 from typing import Optional
+from functools import wraps
 from falkordb import FalkorDB
 from dotenv import load_dotenv
 from urllib.parse import urlparse
@@ -17,10 +18,26 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Function to verify the token
+SECRET_TOKEN = os.getenv('SECRET_TOKEN')
+def verify_token(token):
+    return token == SECRET_TOKEN
+
+# Decorator to protect routes with token authentication
+def token_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')  # Get token from header
+        if not token or not verify_token(token):
+            return jsonify(message="Unauthorized"), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
 def create_app():
     app = Flask(__name__)
 
     @app.route('/graph_entities', methods=['GET'])
+    @token_required  # Apply token authentication decorator
     def graph_entities():
         """
         Endpoint to fetch sub-graph entities from a given repository.
@@ -64,6 +81,7 @@ def create_app():
 
 
     @app.route('/get_neighbors', methods=['GET'])
+    @token_required  # Apply token authentication decorator
     def get_neighbors():
         """
         Endpoint to get neighbors of a specific node in the graph.
@@ -117,6 +135,7 @@ def create_app():
 
 
     @app.route('/process_repo', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def process_repo():
         """
         Process a GitHub repository.
@@ -151,6 +170,7 @@ def create_app():
         return jsonify(response), 200
 
     @app.route('/process_local_repo', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def process_local_repo():
         # Get JSON data from the request
         data = request.get_json()
@@ -182,6 +202,7 @@ def create_app():
         return jsonify(response), 200
 
     @app.route('/process_code_coverage', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def process_code_coverage():
         """
         Endpoint to process code coverage data for a given repository.
@@ -217,6 +238,7 @@ def create_app():
 
 
     @app.route('/switch_commit', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def switch_commit():
         """
         Endpoint to switch a repository to a specific commit.
@@ -250,6 +272,7 @@ def create_app():
         return jsonify(response), 200
 
     @app.route('/auto_complete', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def auto_complete():
         """
         Endpoint to process auto-completion requests for a repository based on a prefix.
@@ -288,6 +311,7 @@ def create_app():
 
 
     @app.route('/list_repos', methods=['GET'])
+    @token_required  # Apply token authentication decorator
     def list_repos():
         """
         Endpoint to list all available repositories.
@@ -309,6 +333,7 @@ def create_app():
 
 
     @app.route('/list_commits', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def list_commits():
         """
         Endpoint to list all commits of a specified repository.
@@ -346,6 +371,7 @@ def create_app():
 
 
     @app.route('/repo_info', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def repo_info():
         """
         Endpoint to retrieve information about a specific repository.
@@ -390,6 +416,7 @@ def create_app():
         return jsonify(response), 200
 
     @app.route('/find_paths', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def find_paths():
         """
         Finds all paths between a source node (src) and a destination node (dest) in the graph.
@@ -445,6 +472,7 @@ def create_app():
 
 
     @app.route('/unreachable', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def unreachable_entities():
         """
         Endpoint to retrieve unreachable entities in the graph.
@@ -478,6 +506,7 @@ def create_app():
         return jsonify(response), 200
 
     @app.route('/chat', methods=['POST'])
+    @token_required  # Apply token authentication decorator
     def chat():
         # Get JSON data from the request
         data = request.get_json()
