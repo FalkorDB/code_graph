@@ -1,7 +1,7 @@
 import unittest
 from falkordb import FalkorDB
 from typing import List, Optional
-from code_graph import *
+from api import *
 
 
 class TestGraphOps(unittest.TestCase):
