@@ -3,7 +3,6 @@ import shutil
 import logging
 import validators
 import subprocess
-from git import Repo
 from .info import *
 from pathlib import Path
 from .graph import Graph
@@ -61,6 +60,7 @@ class Project():
 
     @classmethod
     def from_local_repository(cls, path: Path|str):
+        from git import Repo
         path = Path(path) if isinstance(path, str) else path
 
         # Validate path exists
@@ -77,6 +77,7 @@ class Project():
         return cls(name, path, url)
 
     def analyze_sources(self, ignore: Optional[List[str]] = []) -> Graph:
+        from git import Repo
         analyzer = SourceAnalyzer()
         analyzer.analyze(self.path, self.graph, ignore)
 
