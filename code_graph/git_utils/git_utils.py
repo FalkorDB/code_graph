@@ -6,7 +6,6 @@ import logging
 import threading
 import subprocess
 from ..info import *
-from git import Repo
 from pathlib import Path
 from ..graph import Graph
 from .git_graph import GitGraph
@@ -77,6 +76,8 @@ def build_commit_graph(
     Returns:
         GitGraph: Graph object representing the commit history.
     """
+
+    from git import Repo
 
     # Copy the graph into a temporary graph
     logging.info(f"Cloning source graph {repo_name} -> {repo_name}_tmp")

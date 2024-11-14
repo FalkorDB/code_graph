@@ -1,8 +1,7 @@
 import os
 import logging
-from git import Commit
-from falkordb import FalkorDB, Node
 from typing import List, Optional
+from falkordb import FalkorDB, Node
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +40,7 @@ class GitGraph():
                 'author':  node.properties['author'],
                 'message': node.properties['message']}
 
-    def add_commit(self, commit: Commit) -> None:
+    def add_commit(self, commit) -> None:
         """
             Add a new commit to the graph
         """
