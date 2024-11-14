@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-from code_graph import SourceAnalyzer, File, Struct, Function, Graph
+from api import SourceAnalyzer, File, Struct, Function, Graph
 
 class Test_C_Analyzer(unittest.TestCase):
     def test_analyzer(self):

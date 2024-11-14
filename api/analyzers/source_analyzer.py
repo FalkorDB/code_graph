@@ -2,7 +2,6 @@ import os
 import shutil
 import concurrent.futures
 
-from git import Repo
 from pathlib import Path
 from typing import Optional, List
 
@@ -170,6 +169,7 @@ class SourceAnalyzer():
             path (str): Path to a local git repository
             ignore (List(str)): List of paths to skip
         """
+        from git import Repo
 
         self.analyze_local_folder(path, ignore)
 
