@@ -1,9 +1,5 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "code_graph/app.py", "use": "@vercel/python" }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/code_graph/app.py" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/code_graph/app" }
   ]
 }
