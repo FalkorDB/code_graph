@@ -33,7 +33,7 @@ def _clone_source(url: str, name: str) -> Path:
 
     # Run the git clone command and wait for it to finish
     result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    
+
     return path
 
 class Project():

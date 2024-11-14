@@ -160,7 +160,7 @@ def create_app():
 
         proj = Project.from_git_repository(url)
         proj.analyze_sources(ignore)
-        proj.process_git_history(ignore)
+        #proj.process_git_history(ignore)
 
         # Create a response
         response = {
