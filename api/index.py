@@ -46,7 +46,7 @@ def index():
     <html>
     <head>
         <title>Falkor Code-Graph-Backend API</title>
-        <link rel="icon" href="https://code-graph.falkordb.com/favicon.ico" type="image/x-icon" sizes="255x255"/>
+        <link rel="icon" href="https://code-graph.falkordb.com/favicon.ico" type="image/x-icon"/>
     </head>
     <body>      
         <h1>Welcome to the Falkor Code-Graph-Backend API</h1>
