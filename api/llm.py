@@ -1,3 +1,4 @@
+import os
 import logging
 
 from graphrag_sdk.models.openai import OpenAiGenerativeModel
@@ -201,6 +202,10 @@ def _create_kg_agent(repo_name: str):
         name=repo_name,
         ontology=ontology,
         model_config=KnowledgeGraphModelConfig.with_model(openapi_model),
+        host=os.getenv('FALKORDB_HOST', 'localhost'),
+        port=os.getenv('FALKORDB_PORT', 6379),
+        username=os.getenv('FALKORDB_USERNAME', None),
+        password=os.getenv('FALKORDB_PASSWORD', None),
     )
 
     return code_graph_kg.chat_session()
