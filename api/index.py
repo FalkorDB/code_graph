@@ -79,23 +79,20 @@ def graph_entities():
         return jsonify({"status": "Internal server error"}), 500
 
 
-@app.route('/get_neighbors', methods=['POST'])
+@app.route('/get_neighbors', methods=['GET'])
 @token_required  # Apply token authentication decorator
 def get_neighbors():
     """
-    Endpoint to get neighbors of a nodes list in the graph.
-    Expects 'repo' and 'node_ids' as body parameters.
+    Endpoint to get neighbors of a specific node in the graph.
+    Expects 'repo' and 'node_id' as query parameters.
 
     Returns:
         JSON response containing neighbors or error messages.
     """
 
-    # Get JSON data from the request
-    data = request.get_json()
-
     # Get query parameters
-    repo    = data.get('repo')
-    node_ids = data.get('node_ids')
+    repo    = request.args.get('repo')
+    node_id = request.args.get('node_id')
 
     # Validate 'repo' parameter
     if not repo:
@@ -103,7 +100,7 @@ def get_neighbors():
         return jsonify({"status": "Repository name is required."}), 400
 
     # Validate 'node_id' parameter
-    if not node_ids:
+    if not node_id:
         logging.error("Node ID is missing in the request.")
         return jsonify({"status": "Node ID is required."}), 400
 
@@ -114,19 +111,19 @@ def get_neighbors():
 
     # Try converting node_id to an integer
     try:
-        node_ids = [int(node_id) for node_id in node_ids]
+        node_id = int(node_id)
     except ValueError:
-        logging.error(f"Invalid node ID: {node_ids}. It must be an integer.")
+        logging.error(f"Invalid node ID: {node_id}. It must be an integer.")
         return jsonify({"status": "Invalid node ID. It must be an integer."}), 400
 
     # Initialize the graph with the provided repository
     g = Graph(repo)
 
     # Fetch the neighbors of the specified node
-    neighbors = g.get_neighbors(node_ids)
+    neighbors = g.get_neighbors(node_id)
 
     # Log and return the neighbors
-    logging.info(f"Successfully retrieved neighbors for node ID {node_ids} in repo '{repo}'.")
+    logging.info(f"Successfully retrieved neighbors for node ID {node_id} in repo '{repo}'.")
 
     response = {
         'status': 'success',
@@ -173,41 +170,6 @@ def auto_complete():
 
     return jsonify(response), 200
 
-@app.route('/process_repo', methods=['POST'])
-@token_required  # Apply token authentication decorator
-def process_repo():
-     """
-     Process a GitHub repository.
-
-     Expected JSON payload:
-     {
-         "repo_url": "string",
-         "ignore": ["string"]  # optional
-     }
-
-     Returns:
-         JSON response with processing status
-     """
-
-     data = request.get_json()
-     url = data.get('repo_url')
-     if url is None:
-         return jsonify({'status': f'Missing mandatory parameter "url"'}), 400
-     logger.debug(f'Received repo_url: {url}')
-
-     ignore = data.get('ignore', [])
-
-     proj = Project.from_git_repository(url)
-     proj.analyze_sources(ignore)
-    #  proj.process_git_history(ignore)
-
-     # Create a response
-     response = {
-         'status': 'success',
-     }
-
-     return jsonify(response), 200
-
 
 @app.route('/list_repos', methods=['GET'])
 @token_required  # Apply token authentication decorator
@@ -221,7 +183,7 @@ def list_repos():
 
     # Fetch list of repositories
     repos = get_repos()
-    print(repos)
+
     # Create a success response with the list of repositories
     response = {
         'status': 'success',
