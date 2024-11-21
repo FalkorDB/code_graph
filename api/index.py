@@ -102,22 +102,22 @@ def get_neighbors():
         logging.error("Repository name is missing in the request.")
         return jsonify({"status": "Repository name is required."}), 400
 
-    # Validate 'node_id' parameter
+    # Validate 'node_ids' parameter
     if not node_ids:
-        logging.error("Node ID is missing in the request.")
-        return jsonify({"status": "Node ID is required."}), 400
+        logging.error("Node IDs is missing in the request.")
+        return jsonify({"status": "Node IDs is required."}), 400
 
     # Validate repo exists
     if not graph_exists(repo):
         logging.error(f"Missing project {repo}")
         return jsonify({"status": f"Missing project {repo}"}), 400
 
-    # Try converting node_id to an integer
+    # Try converting node_ids to an integer
     try:
         node_ids = [int(node_id) for node_id in node_ids]
     except ValueError:
-        logging.error(f"Invalid node ID: {node_ids}. It must be an integer.")
-        return jsonify({"status": "Invalid node ID. It must be an integer."}), 400
+        logging.error(f"Invalid node IDs: {node_ids}. It must be an integer.")
+        return jsonify({"status": "Invalid node IDs. It must be an integer."}), 400
 
     # Initialize the graph with the provided repository
     g = Graph(repo)
@@ -126,7 +126,7 @@ def get_neighbors():
     neighbors = g.get_neighbors(node_ids)
 
     # Log and return the neighbors
-    logging.info(f"Successfully retrieved neighbors for node ID {node_ids} in repo '{repo}'.")
+    logging.info(f"Successfully retrieved neighbors for node IDs {node_ids} in repo '{repo}'.")
 
     response = {
         'status': 'success',
