@@ -1,7 +1,7 @@
 import os
 import time
 from .entities import *
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, List, Tuple
 from falkordb import FalkorDB, Path, Node, QueryResult
 
 # Configure the logger
@@ -194,12 +194,12 @@ class Graph():
         return sub_graph
 
 
-    def get_neighbors(self, node_id: int, rel: Optional[str] = None, lbl: Optional[str] = None) -> Dict[str, List[dict]]:
+    def get_neighbors(self, node_ids: List[int], rel: Optional[str] = None, lbl: Optional[str] = None) -> Dict[str, List[dict]]:
         """
-        Fetch the neighbors of a given node in the graph based on relationship type and/or label.
+        Fetch the neighbors of a given nodes in the graph based on relationship type and/or label.
 
         Args:
-            node_id (int): The ID of the source node.
+            node_ids (List[int]): The IDs of the source nodes.
             rel (str, optional): The type of relationship to filter by. Defaults to None.
             lbl (str, optional): The label of the destination node to filter by. Defaults to None.
 
@@ -208,8 +208,8 @@ class Graph():
         """
 
         # Validate inputs
-        if not isinstance(node_id, int):
-            raise ValueError("node_id must be an integer")
+        if not all(isinstance(node_id, int) for node_id in node_ids):
+            raise ValueError("node_ids must be an integer list")
 
         # Build relationship and label query parts
         rel_query = f":{rel}" if rel else ""
@@ -218,7 +218,7 @@ class Graph():
         # Parameterized Cypher query to find neighbors
         query = f"""
             MATCH (n)-[e{rel_query}]->(dest{lbl_query})
-            WHERE ID(n) = $node_id
+            WHERE ID(n) IN $node_ids
             RETURN e, dest
         """
 
@@ -227,7 +227,7 @@ class Graph():
 
         try:
             # Execute the graph query with node_id parameter
-            result_set = self._query(query, {'node_id': node_id}).result_set
+            result_set = self._query(query, {'node_ids': node_ids}).result_set
 
             # Iterate over the result set and process nodes and edges
             for edge, destination_node in result_set:
@@ -237,7 +237,7 @@ class Graph():
             return neighbors
 
         except Exception as e:
-            logging.error(f"Error fetching neighbors for node {node_id}: {e}")
+            logging.error(f"Error fetching neighbors for node {node_ids}: {e}")
             return {'nodes': [], 'edges': []}
 
 
