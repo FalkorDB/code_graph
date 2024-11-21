@@ -173,42 +173,6 @@ def auto_complete():
 
     return jsonify(response), 200
 
-@app.route('/process_repo', methods=['POST'])
-@token_required  # Apply token authentication decorator
-def process_repo():
-     """
-     Process a GitHub repository.
-
-     Expected JSON payload:
-     {
-         "repo_url": "string",
-         "ignore": ["string"]  # optional
-     }
-
-     Returns:
-         JSON response with processing status
-     """
-
-     data = request.get_json()
-     url = data.get('repo_url')
-     if url is None:
-         return jsonify({'status': f'Missing mandatory parameter "url"'}), 400
-     logger.debug(f'Received repo_url: {url}')
-
-     ignore = data.get('ignore', [])
-
-     proj = Project.from_git_repository(url)
-     proj.analyze_sources(ignore)
-    #  proj.process_git_history(ignore)
-
-     # Create a response
-     response = {
-         'status': 'success',
-     }
-
-     return jsonify(response), 200
-
-
 @app.route('/list_repos', methods=['GET'])
 @token_required  # Apply token authentication decorator
 def list_repos():
@@ -221,7 +185,7 @@ def list_repos():
 
     # Fetch list of repositories
     repos = get_repos()
-    print(repos)
+
     # Create a success response with the list of repositories
     response = {
         'status': 'success',
