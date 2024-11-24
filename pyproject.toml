@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "code_graph"
+name = "code-graph-backend"
 version = "0.1.0"
 description = "code_graph is designed to help developers visualize and analyze the structure of their source code. It takes source code as input and generates a graph representation, making it easier to understand relationships and dependencies within the codebase."
 authors = ["Roi Lipman <roilipman@gmail.com>"]
@@ -7,8 +7,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-graphrag-sdk = { version = "^0.3.0", extras = ["openai"] }
-tree-sitter = "^0.22.3"
+graphrag-sdk = { version = "^0.3.1", extras = ["openai"] }
+tree-sitter = "^0.23.2"
 validators = "^0.34.0"
 falkordb = "^1.0.5"
 tree-sitter-c = "^0.21.4"
