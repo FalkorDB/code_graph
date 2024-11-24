@@ -112,13 +112,6 @@ def get_neighbors():
         logging.error(f"Missing project {repo}")
         return jsonify({"status": f"Missing project {repo}"}), 400
 
-    # Try converting node_ids to an integer
-    try:
-        node_ids = [int(node_id) for node_id in node_ids]
-    except ValueError:
-        logging.error(f"Invalid node IDs: {node_ids}. It must be an integer.")
-        return jsonify({"status": "Invalid node IDs. It must be an integer."}), 400
-
     # Initialize the graph with the provided repository
     g = Graph(repo)
 
