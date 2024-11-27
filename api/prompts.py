@@ -66,13 +66,20 @@ Using the provided ontology, generate a valid OpenCypher statement to query the 
   - If it is relevant, incorporate necessary information from it into the query.
   - If it is not relevant, generate the query solely based on the current question.
 - Use **only** the entities, relationship types, and properties specified in the ontology.
-- **Pay attention to property data types as defined in the ontology:**
-  - Use list functions for list properties.
-  - Avoid unnecessary splitting of properties.
-- Ensure relationships are correctly directed; arrows should point from the **source** to the **target**.
-- If you cannot generate a valid OpenCypher statement for any reason, return an empty string.
+- **Relationship Types:**
+  - Specify relationship types when required.
+  - If any relationship type is acceptable, you can omit it by using `[*]`.
+- **Node Property Matching:**
+  - Specify node properties within the `MATCH` clause or using a `WHERE` clause.
+    - Use a `WHERE` clause when matching multiple node properties or for clarity.
+- **UNWIND Clause:**
+  - Use `UNWIND` to expand a list into individual rows when you need to return individual node properties from a path.
+- Do **not** split **string properties** properties; they are already lists.
+- Ensure relationships are correctly directed; arrows should always point from the **source** to the **target**.
+- Verify that your Cypher query is valid and correct any errors.
+- Extract only the attributes relevant to the question.
+- If you cannot generate a valid OpenCypher statement for any reason, return an empty response.
 - Output the Cypher statement enclosed in triple backticks.
-
 
 **Last Answer:** {last_answer}
 
