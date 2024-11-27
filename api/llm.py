@@ -3,7 +3,11 @@ import logging
 
 from graphrag_sdk.models.openai import OpenAiGenerativeModel
 #from graphrag_sdk.models.gemini import GeminiGenerativeModel
-
+from prompts import (CYPHER_GEN_SYSTEM,
+                     CYPHER_GEN_PROMPT,
+                     GRAPH_QA_SYSTEM,
+                     GRAPH_QA_PROMPT,
+                    )
 from graphrag_sdk import (
     Ontology,
     Entity,
@@ -206,6 +210,10 @@ def _create_kg_agent(repo_name: str):
         port=os.getenv('FALKORDB_PORT', 6379),
         username=os.getenv('FALKORDB_USERNAME', None),
         password=os.getenv('FALKORDB_PASSWORD', None),
+        cypher_system_instruction=CYPHER_GEN_SYSTEM,
+        qa_system_instruction=GRAPH_QA_SYSTEM,
+        cypher_gen_prompt=CYPHER_GEN_PROMPT,
+        qa_prompt=GRAPH_QA_PROMPT,
     )
 
     return code_graph_kg.chat_session()
@@ -219,4 +227,3 @@ def ask(repo_name: str, question: str) -> str:
     logging.debug(f"Response: {response}")
     print(f"Response: {response}")
     return response
-
