@@ -225,5 +225,5 @@ def ask(repo_name: str, question: str) -> str:
     print(f"Question: {question}")
     response = chat.send_message(question)
     logging.debug(f"Response: {response}")
-    print(f"Response: {response}")
-    return response
+    print(f"Response: {response['response']}")
+    return response['response']
