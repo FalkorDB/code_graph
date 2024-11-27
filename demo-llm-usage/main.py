@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 
 from graphrag_sdk.models.openai import OpenAiGenerativeModel
 #from graphrag_sdk.models.gemini import GeminiGenerativeModel
-
+from prompts import (CYPHER_GEN_SYSTEM,
+                     CYPHER_GEN_PROMPT,
+                     GRAPH_QA_SYSTEM,
+                     GRAPH_QA_PROMPT,
+                    )
 from graphrag_sdk import (
     Ontology,
     Entity,
@@ -152,12 +156,25 @@ def main():
         port=os.getenv('FALKORDB_PORT', 6379),
         username=os.getenv('FALKORDB_USERNAME', None),
         password=os.getenv('FALKORDB_PASSWORD', None),
+        cypher_system_instruction=CYPHER_GEN_SYSTEM,
+        qa_system_instruction=GRAPH_QA_SYSTEM,
+        cypher_gen_prompt=CYPHER_GEN_PROMPT,
+        qa_prompt=GRAPH_QA_PROMPT,
     )
     
-    chat = code_graph_kg.chat_session()
-    chat.send_message("how are you?")
-
-
+    qs = [
+        "List a few recursive functions",
+          "What is the name of the most used method?",
+          "Who is calling the most used method?",
+          "Which function has the largest number of arguments? List a few arguments",
+          "Show a calling path between 2 functions in the graph, only return function(s) names"
+        ]
+    for q in qs:
+        chat = code_graph_kg.chat_session()
+        response = chat.send_message(q)
+        print("Q: " + response['question']+ "\n")
+        print("Cypher: " + response['cypher'])
+        print("A: " + response['response']+"\n")
     
 if __name__ == "__main__":
     main()
