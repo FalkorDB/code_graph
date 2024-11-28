@@ -2,12 +2,6 @@ import os
 import logging
 
 from graphrag_sdk.models.openai import OpenAiGenerativeModel
-#from graphrag_sdk.models.gemini import GeminiGenerativeModel
-from prompts import (CYPHER_GEN_SYSTEM,
-                     CYPHER_GEN_PROMPT,
-                     GRAPH_QA_SYSTEM,
-                     GRAPH_QA_PROMPT,
-                    )
 from graphrag_sdk import (
     Ontology,
     Entity,
@@ -17,6 +11,14 @@ from graphrag_sdk import (
     KnowledgeGraph,
     KnowledgeGraphModelConfig
 )
+
+#from graphrag_sdk.models.gemini import GeminiGenerativeModel
+from .prompts import (CYPHER_GEN_SYSTEM,
+                     CYPHER_GEN_PROMPT,
+                     GRAPH_QA_SYSTEM,
+                     GRAPH_QA_PROMPT,
+                    )
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
