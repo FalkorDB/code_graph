@@ -1093,6 +1093,16 @@ files = [
 wcwidth = "*"
 
 [[package]]
+name = "prompts"
+version = "0.0.1"
+description = "Lightweight, beautiful, and intuitive interactive prompts and CLI Apps"
+optional = false
+python-versions = "*"
+files = [
+    {file = "prompts-0.0.1-py3-none-any.whl", hash = "sha256:7cc240be453c512439c00b2145cd1f3aa3796a031661ed4a52f9ab5a060ffb19"},
+]
+
+[[package]]
 name = "psutil"
 version = "6.1.0"
 description = "Cross-platform lib for process and system monitoring in Python."
@@ -1916,4 +1926,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "4e3860c77c75ab3bcf6e99b87cf0a78398da3b5055d6705376299499342d9a7a"
+content-hash = "db01c9c221e7ec8e3b7fc976d95e605fe721b65b0e93db328aa8fa4cdce06b9f"
