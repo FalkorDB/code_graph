@@ -316,10 +316,14 @@ def chat():
 def analyze_folder():
     """
     Endpoint to analyze local source code
-    Expects 'path' and optionaly an ignore list.
+    Expects 'path' and optionally an ignore list.
 
     Returns:
-        Status code
+        JSON response with status and error message if applicable
+        Status codes:
+            200: Success
+            400: Invalid input
+            500: Internal server error
     """
 
     # Get JSON data from the request
@@ -329,10 +333,20 @@ def analyze_folder():
     path      = data.get('path')
     ignore    = data.get('ignore', [])
 
-    # Validate 'path' parameter
+    # Validate input parameters
     if not path:
         logging.error("'path' is missing from the request.")
         return jsonify({"status": "'path' is required."}), 400
+
+    # Validate path exists and is a directory
+    if not os.path.isdir(path):
+        logging.error(f"Path '{path}' does not exist or is not a directory")
+        return jsonify({"status": "Invalid path: must be an existing directory"}), 400
+
+    # Validate ignore list contains valid paths
+    if not isinstance(ignore, list):
+        logging.error("'ignore' must be a list of paths")
+        return jsonify({"status": "'ignore' must be a list of paths"}), 400
 
     proj_name = Path(path).name
 
@@ -345,8 +359,8 @@ def analyze_folder():
 
     # Return response
     response = {
-        'status': 'success'
-    }
-
+            'status': 'success',
+            'project': proj_name
+        }
     return jsonify(response), 200
 
