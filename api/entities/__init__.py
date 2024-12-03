@@ -6,4 +6,3 @@ from .struct import Struct
 from .function import Function
 from .argument import Argument
 from .entity_encoder import *
-
