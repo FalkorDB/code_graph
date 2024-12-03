@@ -1,4 +1,4 @@
-from task import Task
+from typing import Self
 
 def log(msg: str) -> None:
     print(f'msg: {msg}')
@@ -9,7 +9,7 @@ class Task():
         self.duration = duration
         print(f'name: {name}, duration: {duration}')
 
-    def abort(self, delay:float) -> Task:
+    def abort(self, delay:float) -> Self:
         log(f'Task {self} aborted')
         return self
 
