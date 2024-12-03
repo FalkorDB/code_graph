@@ -1,6 +1,7 @@
 import os
 import datetime
 from api import *
+from pathlib import Path
 from typing import Optional
 from functools import wraps
 from falkordb import FalkorDB
@@ -309,3 +310,43 @@ def chat():
     response = { 'status': 'success', 'response': answer }
 
     return jsonify(response), 200
+
+@app.route('/analyze_folder', methods=['POST'])
+@token_required  # Apply token authentication decorator
+def analyze_folder():
+    """
+    Endpoint to analyze local source code
+    Expects 'path' and optionaly an ignore list.
+
+    Returns:
+        Status code
+    """
+
+    # Get JSON data from the request
+    data = request.get_json()
+
+    # Get query parameters
+    path      = data.get('path')
+    ignore    = data.get('ignore', [])
+
+    # Validate 'path' parameter
+    if not path:
+        logging.error("'path' is missing from the request.")
+        return jsonify({"status": "'path' is required."}), 400
+
+    proj_name = Path(path).name
+
+    # Initialize the graph with the provided project name
+    g = Graph(proj_name)
+
+    # Analyze source code within given folder
+    analyzer = SourceAnalyzer()
+    analyzer.analyze_local_folder(path, g, ignore)
+
+    # Return response
+    response = {
+        'status': 'success'
+    }
+
+    return jsonify(response), 200
+
