@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 class Struct():
     """
@@ -28,7 +28,7 @@ class Struct():
 
     def __str__(self) -> str:
         return f"""
-            id:        {self.id if hasattr(self, 'id') else 'Unknown'}
+            id:        {self.id if hasattr(self, 'id') else 'Unknown'} # type: ignore
             path:      {self.path}
             name:      {self.name}
             doc:       {self.doc}

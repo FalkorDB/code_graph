@@ -1,2 +1,77 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.env
+.venv/
+env/
+venv/
+ENV/
+*.egg-info/
+*.egg
+pip-log.txt
+
+# Flask
+instance/
+*.sqlite3
+*.db
+*.bak
+instance/config.py
+instance/*.secret
+
+# Environment Variables
 .env
+.env.*
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
+# Pytest and Coverage
+.pytest_cache/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.cache
+
+# IDEs and Editors
+.vscode/
+.idea/.env
+.vercel
+
+# ignore the .pyc files
+*.pyc
+
+dist/
+# Node (if using npm/yarn for assets)
+node_modules/
+*.lock
+
+# Static assets (if generated)
+static/
+dist/
+build/
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Heroku
+*.buildpacks
+*.env.local
+*.env.production
+*.env.*.local
+
+# Miscellaneous
+*.bak
+*.tmp
+*.log.*
+Thumbs.db
+
+# Vercel
 .vercel
