@@ -1,3 +1,5 @@
+from task import Task
+
 def log(msg: str) -> None:
     print(f'msg: {msg}')
 
