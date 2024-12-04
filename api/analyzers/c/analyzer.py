@@ -4,7 +4,7 @@ from ..utils import *
 from pathlib import Path
 from ...entities import *
 from ...graph import Graph
-from typing import Union, Optional
+from typing import Optional
 from ..analyzer import AbstractAnalyzer
 
 import tree_sitter_c as tsc
