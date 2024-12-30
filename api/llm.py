@@ -1,7 +1,7 @@
 import os
 import logging
 
-from graphrag_sdk.models.openai import OpenAiGenerativeModel
+from graphrag_sdk.models.litellm import LiteModel
 from graphrag_sdk import (
     Ontology,
     Entity,
