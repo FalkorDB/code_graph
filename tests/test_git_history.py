@@ -1,11 +1,6 @@
 import os
 import unittest
 from git import Repo
-from api import (
-    Graph,
-    Project,
-    switch_commit
-)
 
 repo      = None  # repository
 graph     = None  # code graph

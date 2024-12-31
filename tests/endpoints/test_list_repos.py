@@ -1,19 +1,16 @@
 import redis
 import pytest
 from pathlib import Path
-from api import create_app, Project
+from api import app as create_app
 
 @pytest.fixture()
 def app():
-    app = create_app()
-    app.config.update({
-        "TESTING": True,
-    })
+    create_app.config.update({"TESTING": True})
 
     # other setup can go here
     redis.Redis().flushall()
 
-    yield app
+    yield create_app
 
     # clean up / reset resources here
 

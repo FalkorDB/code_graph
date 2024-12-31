@@ -1,14 +1,11 @@
 import os
-import datetime
-from api import *
 from pathlib import Path
-from typing import Optional
 from functools import wraps
-from falkordb import FalkorDB
 from dotenv import load_dotenv
-from urllib.parse import urlparse
+from flask import Flask, request, jsonify
+import logging
+from api import *
 from .auto_complete import prefix_search
-from flask import Flask, request, jsonify, abort
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,7 +13,6 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure the logger
-import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -363,4 +359,3 @@ def analyze_folder():
             'project': proj_name
         }
     return jsonify(response), 200
-

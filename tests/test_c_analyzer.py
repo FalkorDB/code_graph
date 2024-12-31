@@ -21,7 +21,7 @@ class Test_C_Analyzer(unittest.TestCase):
         path = str(path)
 
         g = Graph("c")
-        analyzer.analyze(path, g)
+        analyzer.analyze_local_folder(path, g)
 
         f = g.get_file('', 'src.c', '.c')
         self.assertEqual(File('', 'src.c', '.c'), f)
@@ -49,7 +49,7 @@ class Test_C_Analyzer(unittest.TestCase):
         self.assertEqual(expected_main, main)
         self.assertIn('x = add', main.src)
 
-        callees = g.function_calls(main.id)
+        callees = g.function_calls(main.id)       
         self.assertEqual(len(callees), 1)
         self.assertEqual(callees[0], add)
 
@@ -59,4 +59,3 @@ class Test_C_Analyzer(unittest.TestCase):
         self.assertEqual(len(callers), 2)
         self.assertIn('add', callers)
         self.assertIn('main', callers)
-

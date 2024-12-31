@@ -17,6 +17,7 @@ flask = "^3.0.3"
 python-dotenv = "^1.0.1"
 
 [tool.poetry.group.test.dependencies]
+GitPython = "^3.1.43"
 pytest = "^8.2.0"
 
 [build-system]

@@ -1,21 +1,17 @@
 import os
 import redis
 import pytest
-from pathlib import Path
-from api import create_app, Project
-from falkordb import FalkorDB, Path, Node, QueryResult
+from api import app as create_app
+from falkordb import FalkorDB
 
 @pytest.fixture()
 def app():
-    app = create_app()
-    app.config.update({
-        "TESTING": True,
-    })
+    create_app.config.update({"TESTING": True})
 
     # other setup can go here
     redis.Redis().flushall()
 
-    yield app
+    yield create_app
 
     # clean up / reset resources here
 
