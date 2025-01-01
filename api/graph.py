@@ -28,7 +28,7 @@ def get_repos() -> List[str]:
                   password=os.getenv('FALKORDB_PASSWORD', None))
 
     graphs = db.list_graphs()
-    graphs = [g for g in graphs if not g.endswith('_git')]
+    graphs = [g for g in graphs if not (g.endswith('_git') or g.endswith('_schema'))]
     return graphs
 
 class Graph():
