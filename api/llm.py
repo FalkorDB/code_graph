@@ -12,7 +12,6 @@ from graphrag_sdk import (
     KnowledgeGraphModelConfig
 )
 
-#from graphrag_sdk.models.gemini import GeminiGenerativeModel
 from .prompts import (CYPHER_GEN_SYSTEM,
                      CYPHER_GEN_PROMPT,
                      GRAPH_QA_SYSTEM,
@@ -199,7 +198,9 @@ ontology = _define_ontology()
 def _create_kg_agent(repo_name: str):
     global ontology
 
-    model = LiteModel(model_name="gemini/gemini-2.0-flash-exp")
+    model_name = os.getenv('MODEL_NAME', 'gemini/gemini-2.0-flash-exp')
+
+    model = LiteModel(model_name)
 
     #ontology = _define_ontology()
     code_graph_kg = KnowledgeGraph(
