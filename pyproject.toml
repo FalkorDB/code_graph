@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-graphrag-sdk = { version = "^0.3.1", extras = ["openai"] }
+graphrag-sdk = { version = "^0.4.1", extras = ["litellm"] }
 tree-sitter = "^0.23.2"
 validators = "^0.34.0"
 falkordb = "^1.0.5"
