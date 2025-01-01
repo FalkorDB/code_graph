@@ -1,6 +1,6 @@
 import os
-import shutil
 import concurrent.futures
+import logging
 
 from pathlib import Path
 from typing import Optional, List
@@ -9,7 +9,6 @@ from ..graph import Graph
 from .c.analyzer import CAnalyzer
 from .python.analyzer import PythonAnalyzer
 
-import logging
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
 
@@ -41,11 +40,11 @@ class SourceAnalyzer():
             if dirpath in ignore:
                 # in-place clear dirnames to prevent os.walk from recursing into
                 # any of the nested directories
-                logging.info(f'ignoring directory: {dirpath}')
+                logging.info('ignoring directory: %s', dirpath)
                 dirnames[:] = []
                 continue
 
-            logging.info(f'Processing directory: {dirpath}')
+            logging.info('Processing directory: %s', dirpath)
 
             # Process each file in the current directory
             for filename in filenames:
@@ -54,10 +53,10 @@ class SourceAnalyzer():
                 # Skip none supported files
                 ext = file_path.suffix
                 if ext not in analyzers:
-                    logging.info(f"Skipping none supported file {file_path}")
+                    logging.info("Skipping none supported file %s", file_path)
                     continue
 
-                logging.info(f'Processing file: {file_path}')
+                logging.info('Processing file: %s', file_path)
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
@@ -88,11 +87,11 @@ class SourceAnalyzer():
             if dirpath in ignore:
                 # in-place clear dirnames to prevent os.walk from recursing into
                 # any of the nested directories
-                logging.info(f'ignoring directory: {dirpath}')
+                logging.info('ignoring directory: %s', dirpath)
                 dirnames[:] = []
                 continue
 
-            logging.info(f'Processing directory: {dirpath}')
+            logging.info('Processing directory: %s', dirpath)
 
             # Process each file in the current directory
             for filename in filenames:
@@ -103,7 +102,7 @@ class SourceAnalyzer():
                 if ext not in analyzers:
                     continue
 
-                logging.info(f'Processing file: {file_path}')
+                logging.info('Processing file: %s', file_path)
 
                 def process_file(path: Path) -> None:
                     with open(path, 'rb') as f:
@@ -118,8 +117,8 @@ class SourceAnalyzer():
 
     def analyze_file(self, path: Path, graph: Graph) -> None:
         ext = path.suffix
-        logging.info(f"analyze_file: path: {path}")
-        logging.info(f"analyze_file: ext: {ext}")
+        logging.info("analyze_file: path: %s", path)
+        logging.info("analyze_file: ext: %s", ext)
         if ext not in analyzers:
             return
 
@@ -144,7 +143,7 @@ class SourceAnalyzer():
             ignore (List(str)): List of paths to skip
         """
 
-        logging.info(f"Analyzing local folder {path}")
+        logging.info("Analyzing local folder %s", path)
 
         # Save original working directory for later restore
         original_dir = Path.cwd()

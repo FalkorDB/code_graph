@@ -49,7 +49,7 @@ class PythonAnalyzer(AbstractAnalyzer):
         # Extract class name
         class_name = node.child_by_field_name("name")
         class_name = class_name.text.decode("utf8")
-        logger.info(f"Class declaration: {class_name}")
+        logger.info("Class declaration: %s", class_name)
 
         # Extract docstring
         docstring_node = None
@@ -58,7 +58,7 @@ class PythonAnalyzer(AbstractAnalyzer):
             docstring_node = body_node.child(0).child(0)
 
         docstring = docstring_node.text.decode('utf-8') if docstring_node else None
-        logger.debug(f"Class docstring: {docstring}")
+        logger.debug("Class docstring: %s", docstring)
 
         # Extract inherited classes
         inherited_classes_node = node.child_by_field_name('superclasses')
@@ -67,7 +67,7 @@ class PythonAnalyzer(AbstractAnalyzer):
             for child in inherited_classes_node.children:
                 if child.type == 'identifier':
                     inherited_classes.append(child.text.decode('utf-8'))
-        logger.debug(f"Class inherited classes: {inherited_classes}")
+        logger.debug("Class inherited classes: %s", inherited_classes)
 
         # Create Class object
         c = Class(str(path), class_name, docstring,
@@ -145,7 +145,7 @@ class PythonAnalyzer(AbstractAnalyzer):
                     arg_type = arg_type_node.text.decode('utf-8')
 
                 else:
-                    logger.debug(f'Unknown function parameter node type: {param.type}')
+                    logger.debug('Unknown function parameter node type: %s', param.type)
                     continue
 
                 args.append((arg_name, arg_type))
@@ -222,10 +222,10 @@ class PythonAnalyzer(AbstractAnalyzer):
         """
 
         if path.suffix != '.py':
-            logger.debug(f"Skipping none Python file {path}")
+            logger.debug("Skipping none Python file %s", path)
             return
 
-        logger.info(f"Python Processing {path}")
+        logger.info("Python Processing %s", path)
 
         # Create file entity
         file = File(os.path.dirname(path), path.name, path.suffix)
@@ -237,7 +237,7 @@ class PythonAnalyzer(AbstractAnalyzer):
         try:
             source_code = source_code.decode('utf-8')
         except Exception as e:
-            logger.error(f"Failed decoding source code: {e}")
+            logger.error("Failed decoding source code: %s", e)
             source_code = ''
 
         # Walk thought the AST
@@ -281,7 +281,7 @@ class PythonAnalyzer(AbstractAnalyzer):
             logger.warning("Unknown function call pattern")
             return None
 
-        logger.debug(f"callee_name: {callee_name}")
+        logger.debug("callee_name: %s", callee_name)
         return callee_name
 
     def process_call_node(self, caller: Union[Function, File], callee_name: str,
@@ -306,7 +306,7 @@ class PythonAnalyzer(AbstractAnalyzer):
                 # Create Function callee_name
                 # Assuming this is a call to either a native or imported Function
                 # Although this call might just be a Class instantiation.
-                logger.info(f"Creating missing Class/Function {callee_name}")
+                logger.info("Creating missing Class/Function %s", callee_name)
                 callee = Function('/', callee_name, None, None, None,0, 0)
                 graph.add_function(callee)
 
@@ -316,7 +316,7 @@ class PythonAnalyzer(AbstractAnalyzer):
     def process_inheritance(self, cls: Class, super_classes: list[str],
                             graph: Graph) -> None:
         for super_class in super_classes:
-            logger.info(f"Class {cls.name} inherits {super_class}")
+            logger.info("Class %s inherits %s", cls.name, super_class)
 
             # Try to get Class object from graph
             _super_class = graph.get_class_by_name(super_class)
@@ -370,15 +370,15 @@ class PythonAnalyzer(AbstractAnalyzer):
         """
 
         if path.suffix != '.py':
-            logger.debug(f"Skipping none Python file {path}")
+            logger.debug("Skipping none Python file %s", path)
             return
 
-        logger.info(f"Processing {path}")
+        logger.info("Processing %s", path)
 
         # Get file entity
         file = graph.get_file(os.path.dirname(path), path.name, path.suffix)
         if file is None:
-            logger.error(f"File entity not found for: {path}")
+            logger.error("File entity not found for: %s", path)
             return
 
         try:
@@ -389,4 +389,4 @@ class PythonAnalyzer(AbstractAnalyzer):
             # Walk thought the AST
             self.second_pass_traverse(file, tree.root_node, path, graph, source_code)
         except Exception as e:
-            logger.error(f"Failed to process file {path}: {e}")
+            logger.error("Failed to process file %s: %s", path, e)
