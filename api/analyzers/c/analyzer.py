@@ -419,7 +419,7 @@ class CAnalyzer(AbstractAnalyzer):
                 self.process_struct_specifier(file, node, path, graph)
 
         # Process include directives
-        query = C_LANGUAGE.query("(preprocessor_directive (include_directive) @include)")
+        query = C_LANGUAGE.query("(preproc_include (string_literal) @include)")
         captures = query.captures(tree.root_node)
 
         if 'include' in captures:
