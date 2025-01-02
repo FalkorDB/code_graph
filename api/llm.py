@@ -1,7 +1,7 @@
 import os
 import logging
 
-from graphrag_sdk.models.openai import OpenAiGenerativeModel
+from graphrag_sdk.models.litellm import LiteModel
 from graphrag_sdk import (
     Ontology,
     Entity,
@@ -12,7 +12,6 @@ from graphrag_sdk import (
     KnowledgeGraphModelConfig
 )
 
-#from graphrag_sdk.models.gemini import GeminiGenerativeModel
 from .prompts import (CYPHER_GEN_SYSTEM,
                      CYPHER_GEN_PROMPT,
                      GRAPH_QA_SYSTEM,
@@ -199,15 +198,15 @@ ontology = _define_ontology()
 def _create_kg_agent(repo_name: str):
     global ontology
 
-    openapi_model    = OpenAiGenerativeModel("gpt-4o")
-    #gemini_model     = GeminiGenerativeModel("gemini-1.5-flash-001")
-    #gemini_model_pro = GeminiGenerativeModel("gemini-1.5-pro")
+    model_name = os.getenv('MODEL_NAME', 'gemini/gemini-2.0-flash-exp')
+
+    model = LiteModel(model_name)
 
     #ontology = _define_ontology()
     code_graph_kg = KnowledgeGraph(
         name=repo_name,
         ontology=ontology,
-        model_config=KnowledgeGraphModelConfig.with_model(openapi_model),
+        model_config=KnowledgeGraphModelConfig.with_model(model),
         host=os.getenv('FALKORDB_HOST', 'localhost'),
         port=os.getenv('FALKORDB_PORT', 6379),
         username=os.getenv('FALKORDB_USERNAME', None),
