@@ -1,7 +1,6 @@
 import unittest
 from falkordb import FalkorDB
-from typing import List, Optional
-from api import *
+from api import Graph, Function, File
 
 
 class TestGraphOps(unittest.TestCase):

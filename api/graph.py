@@ -1,15 +1,26 @@
 import os
 import time
-from .entities import *
+import logging
+
 from typing import Dict, Optional, List, Tuple
 from falkordb import FalkorDB, Path, Node, QueryResult
+from .entities import Class, Function, Struct, File, encode_node, encode_edge
 
 # Configure the logger
-import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(filename)s - %(asctime)s - %(levelname)s - %(message)s')
 
 def graph_exists(name: str):
+    """
+        Check if a graph exists
+        
+        Args:
+            name (str): The name of the graph to check
+            
+        Returns:
+            bool: True if the graph exists, False otherwise
+    """
+
     db = FalkorDB(host=os.getenv('FALKORDB_HOST', 'localhost'),
                   port=os.getenv('FALKORDB_PORT', 6379),
                   username=os.getenv('FALKORDB_USERNAME', None),
@@ -124,8 +135,8 @@ class Graph():
             # Clear backlog
             self.backlog = {'queries': [], 'params': []}
 
-            logging.debug(f"Backlog queries: {queries}")
-            logging.debug(f"Backlog params: {params}")
+            logging.debug("Backlog queries: %s", queries)
+            logging.debug("Backlog params: %s", params)
 
             # Set return value
             res = queries, params
@@ -159,18 +170,27 @@ class Graph():
                     'properties_removed', 'relationships_created'
                 ]
             )
-            logging.info(f"change_detected: {change_detected}")
+            logging.info("change_detected: %s", change_detected)
 
             # Append the query and parameters to the backlog if changes occurred
             if change_detected:
-                logging.debug(f"logging queries: {q}")
-                logging.debug(f"logging params: {params}")
+                logging.debug("logging queries: %s", q)
+                logging.debug("logging params: %s", params)
                 self.backlog['queries'].append(q)
                 self.backlog['params'].append(params)
 
         return result_set
 
     def get_sub_graph(self, l: int) -> dict:
+        """
+        Fetch a subgraph from the graph database.
+        
+        Args:
+            l (int): The limit of nodes to fetch.
+            
+        Returns:
+            dict: A dictionary containing the subgraph with 'nodes' and 'edges'.
+        """
 
         q = """MATCH (src)
                    OPTIONAL MATCH (src)-[e]->(dest)
@@ -237,7 +257,7 @@ class Graph():
             return neighbors
 
         except Exception as e:
-            logging.error(f"Error fetching neighbors for node {node_ids}: {e}")
+            logging.error("Error fetching neighbors for node %s: %s", node_ids, e)
             return {'nodes': [], 'edges': []}
 
 
@@ -283,6 +303,18 @@ class Graph():
         c.id = node.id
 
     def get_class_by_name(self, class_name: str) -> Optional[Class]:
+        """
+        Retrieves a Class entity from
+        the graph database based on its name.
+        
+        Args:
+            class_name (str): The name of the class.
+            
+        Returns:
+            Optional[Class]: The Class
+            object if found, otherwise None.
+        """
+
         q = "MATCH (c:Class) WHERE c.name = $name RETURN c LIMIT 1"
         res = self._query(q, {'name': class_name}).result_set
 
@@ -292,6 +324,18 @@ class Graph():
         return self._class_from_node(res[0][0])
 
     def get_class(self, class_id: int) -> Optional[Class]:
+        """
+        Retrieves a Class entity from
+        the graph database based on its ID.
+        
+        Args:
+            class_id (int): The ID of the class.
+            
+        Returns:
+            Optional[Class]: The Class
+            object if found, otherwise None.
+        """
+
         q = """MATCH (c:Class)
                WHERE ID(c) = $class_id
                RETURN c"""
@@ -769,4 +813,3 @@ class Graph():
             unreachables.append(encode_node(node))
 
         return unreachables
-

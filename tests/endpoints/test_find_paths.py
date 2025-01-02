@@ -1,9 +1,8 @@
 import os
 import redis
 import pytest
-from pathlib import Path
 from api import create_app, Project
-from falkordb import FalkorDB, Path, Node, QueryResult
+from falkordb import FalkorDB
 
 @pytest.fixture()
 def app():

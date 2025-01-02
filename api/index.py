@@ -1,14 +1,11 @@
 import os
-import datetime
-from api import *
+import logging
 from pathlib import Path
-from typing import Optional
 from functools import wraps
-from falkordb import FalkorDB
+from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from urllib.parse import urlparse
+from api import graph_exists, Graph, get_repos, get_repo_info, ask, SourceAnalyzer
 from .auto_complete import prefix_search
-from flask import Flask, request, jsonify, abort
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,7 +13,6 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure the logger
-import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -57,7 +53,7 @@ def graph_entities():
         return jsonify({"status": "Missing 'repo' parameter"}), 400
 
     if not graph_exists(repo):
-        logging.error(f"Missing project {repo}")
+        logging.error("Missing project %s", repo)
         return jsonify({"status": f"Missing project {repo}"}), 400
 
     try:
@@ -67,7 +63,7 @@ def graph_entities():
         # Retrieve a sub-graph of up to 100 entities
         sub_graph = g.get_sub_graph(100)
 
-        logging.info(f"Successfully retrieved sub-graph for repo: {repo}")
+        logging.info("Successfully retrieved sub-graph for repo: %s", repo)
         response = {
             'status': 'success',
             'entities': sub_graph
@@ -76,7 +72,7 @@ def graph_entities():
         return jsonify(response), 200
 
     except Exception as e:
-        logging.error(f"Error retrieving sub-graph for repo '{repo}': {e}")
+        logging.error("Error retrieving sub-graph for repo '%s': %s", repo, e)
         return jsonify({"status": "Internal server error"}), 500
 
 
@@ -110,7 +106,7 @@ def get_neighbors():
 
     # Validate repo exists
     if not graph_exists(repo):
-        logging.error(f"Missing project {repo}")
+        logging.error("Missing project %s", repo)
         return jsonify({"status": f"Missing project {repo}"}), 400
 
     # Initialize the graph with the provided repository
@@ -120,7 +116,7 @@ def get_neighbors():
     neighbors = g.get_neighbors(node_ids)
 
     # Log and return the neighbors
-    logging.info(f"Successfully retrieved neighbors for node IDs {node_ids} in repo '{repo}'.")
+    logging.info("Successfully retrieved neighbors for node IDs %s in repo '%s'.", node_ids, repo)
 
     response = {
         'status': 'success',
@@ -145,12 +141,12 @@ def auto_complete():
     # Validate that 'repo' is provided
     repo = data.get('repo')
     if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
 
     # Validate that 'prefix' is provided
     prefix = data.get('prefix')
     if prefix is None:
-        return jsonify({'status': f'Missing mandatory parameter "prefix"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "prefix"'}), 400
 
     # Validate repo exists
     if not graph_exists(repo):
@@ -211,7 +207,7 @@ def repo_info():
     # Validate the 'repo' parameter
     repo = data.get('repo')
     if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
 
     # Initialize the graph with the provided repository name
     g = Graph(repo)
@@ -257,19 +253,19 @@ def find_paths():
     # Validate 'repo' parameter
     repo = data.get('repo')
     if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
 
     # Validate 'src' parameter
     src = data.get('src')
     if src is None:
-        return jsonify({'status': f'Missing mandatory parameter "src"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "src"'}), 400
     if not isinstance(src, int):
         return jsonify({'status': "src node id must be int"}), 400
 
     # Validate 'dest' parameter
     dest = data.get('dest')
     if dest is None:
-        return jsonify({'status': f'Missing mandatory parameter "dest"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "dest"'}), 400
     if not isinstance(dest, int):
         return jsonify({'status': "dest node id must be int"}), 400
 
@@ -297,12 +293,12 @@ def chat():
     # Validate 'repo' parameter
     repo = data.get('repo')
     if repo is None:
-        return jsonify({'status': f'Missing mandatory parameter "repo"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "repo"'}), 400
 
     # Get optional 'label' and 'relation' parameters
     msg = data.get('msg')
     if msg is None:
-        return jsonify({'status': f'Missing mandatory parameter "msg"'}), 400
+        return jsonify({'status': 'Missing mandatory parameter "msg"'}), 400
 
     answer = ask(repo, msg)
 

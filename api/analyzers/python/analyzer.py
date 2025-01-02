@@ -1,18 +1,17 @@
 import io
 import os
-from ..utils import *
+import logging
 from pathlib import Path
-from ...entities import *
-from ...graph import Graph
 from typing import Union, Optional
-from ..analyzer import AbstractAnalyzer
-
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser, Node
+from ..utils import *
+from ...entities import *
+from ...graph import Graph
+from ..analyzer import AbstractAnalyzer
 
 PY_LANGUAGE = Language(tspython.language())
 
-import logging
 logger = logging.getLogger('code_graph')
 
 class PythonAnalyzer(AbstractAnalyzer):

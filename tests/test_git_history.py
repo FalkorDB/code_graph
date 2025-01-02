@@ -2,7 +2,6 @@ import os
 import unittest
 from git import Repo
 from api import (
-    Graph,
     Project,
     switch_commit
 )

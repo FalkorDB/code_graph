@@ -1,5 +1,4 @@
 import os
-import shutil
 import concurrent.futures
 
 from pathlib import Path
