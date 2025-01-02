@@ -369,21 +369,24 @@ class CAnalyzer(AbstractAnalyzer):
         #   ]
         # }
 
-        functions = captures['function']
-        for node in functions:
-            self.process_function_definition(file, node, path, graph, source_code)
+        if 'function' in captures:
+            functions = captures['function']
+            for node in functions:
+                self.process_function_definition(file, node, path, graph, source_code)
 
         # Process struct definitions
         query = C_LANGUAGE.query("(struct_specifier) @struct")
         captures = query.captures(tree.root_node)
-        structs = captures['struct']
-        # captures: {'struct':
-        #   [
-        #       <Node type=struct_specifier, start_point=(9, 0), end_point=(13, 1)>
-        #   ]
-        # }
-        for node in structs:
-            self.process_struct_specifier(file, node, path, graph)
+        
+        if 'struct' in captures:
+            structs = captures['struct']
+            # captures: {'struct':
+            #   [
+            #       <Node type=struct_specifier, start_point=(9, 0), end_point=(13, 1)>
+            #   ]
+            # }
+            for node in structs:
+                self.process_struct_specifier(file, node, path, graph)
 
     def second_pass(self, path: Path, f: io.TextIOWrapper, graph: Graph) -> None:
         """
