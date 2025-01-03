@@ -329,14 +329,9 @@ class CAnalyzer(AbstractAnalyzer):
             None
         """
 
-        assert(node.type == 'include_directive')
+        assert(node.type == 'system_lib_string' or node.type == 'string_literal')
 
-        # Extract the included file path
-        included_file_node = node.child_by_field_name('path')
-        if included_file_node is None:
-            return
-
-        included_file_path = included_file_node.text.decode('utf-8').strip('"<>')
+        included_file_path = node.text.decode('utf-8').strip('"<>')
 
         # Create file entity for the included file
         included_file = File(os.path.dirname(path), included_file_path, os.path.splitext(included_file_path)[1])
@@ -419,7 +414,7 @@ class CAnalyzer(AbstractAnalyzer):
                 self.process_struct_specifier(file, node, path, graph)
 
         # Process include directives
-        query = C_LANGUAGE.query("(preproc_include (string_literal) @include)")
+        query = C_LANGUAGE.query("(preproc_include [(string_literal) (system_lib_string)] @include)")
         captures = query.captures(tree.root_node)
 
         if 'include' in captures:
