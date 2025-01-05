@@ -65,5 +65,6 @@ class Test_C_Analyzer(unittest.TestCase):
         self.assertIsNotNone(included_file)
 
         includes = g.get_neighbors([f.id], rel='INCLUDES')
+        self.assertEqual(len(includes), 3)
         included_files = [node['properties']['name'] for node in includes['nodes']]
         self.assertIn('myheader.h', included_files)

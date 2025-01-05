@@ -330,19 +330,30 @@ class CAnalyzer(AbstractAnalyzer):
         """
 
         assert(node.type == 'system_lib_string' or node.type == 'string_literal')
-
-        included_file_path = node.text.decode('utf-8').strip('"<>')
-        if not included_file_path:
-            logger.warning("Empty include path found in %s", path)
+        
+        
+        try:
+            included_file_path = node.text.decode('utf-8').strip('"<>')
+            if not included_file_path:
+                logger.warning("Empty include path found in %s", path)
+                return
+            
+            # Normalize and validate path
+            normalized_path = os.path.normpath(included_file_path)
+        except UnicodeDecodeError as e:
+            logger.error("Failed to decode include path in %s: %s", path, e)
             return
 
-        splitted = os.path.splitext(included_file_path)
+        splitted = os.path.splitext(normalized_path)
         if len(splitted) < 2:
             logger.warning("Include path has no extension: %s", included_file_path)
             return
 
         # Create file entity for the included file
-        included_file = File(os.path.dirname(path), included_file_path, splitted[1])
+        path = os.path.dirname(normalized_path)
+        name = os.path.basename(normalized_path)
+        ext = splitted[1]
+        included_file = File(path, name, ext)
         graph.add_file(included_file)
 
         # Connect the parent file to the included file
