@@ -315,6 +315,50 @@ class CAnalyzer(AbstractAnalyzer):
             # Connect parent to entity
             graph.connect_entities('DEFINES', parent.id, entity.id)
 
+    def process_include_directive(self, parent: File, node: Node, path: Path, graph: Graph) -> None:
+        """
+        Processes an include directive node to create an edge between files.
+
+        Args:
+            parent (File): The parent File object.
+            node (Node): The AST node representing the include directive.
+            path (Path): The file path where the include directive is found.
+            graph (Graph): The Graph object to which the file entities and edges will be added.
+
+        Returns:
+            None
+        """
+
+        assert(node.type == 'system_lib_string' or node.type == 'string_literal')
+        
+        
+        try:
+            included_file_path = node.text.decode('utf-8').strip('"<>')
+            if not included_file_path:
+                logger.warning("Empty include path found in %s", path)
+                return
+            
+            # Normalize and validate path
+            normalized_path = os.path.normpath(included_file_path)
+        except UnicodeDecodeError as e:
+            logger.error("Failed to decode include path in %s: %s", path, e)
+            return
+
+        splitted = os.path.splitext(normalized_path)
+        if len(splitted) < 2:
+            logger.warning("Include path has no extension: %s", included_file_path)
+            return
+
+        # Create file entity for the included file
+        path = os.path.dirname(normalized_path)
+        name = os.path.basename(normalized_path)
+        ext = splitted[1]
+        included_file = File(path, name, ext)
+        graph.add_file(included_file)
+
+        # Connect the parent file to the included file
+        graph.connect_entities('INCLUDES', parent.id, included_file.id)
+
     def first_pass(self, path: Path, f: io.TextIOWrapper, graph:Graph) -> None:
         """
         Perform the first pass processing of a C source file or header file.
@@ -387,6 +431,15 @@ class CAnalyzer(AbstractAnalyzer):
             # }
             for node in structs:
                 self.process_struct_specifier(file, node, path, graph)
+
+        # Process include directives
+        query = C_LANGUAGE.query("(preproc_include [(string_literal) (system_lib_string)] @include)")
+        captures = query.captures(tree.root_node)
+
+        if 'include' in captures:
+            includes = captures['include']
+            for node in includes:
+                self.process_include_directive(file, node, path, graph)
 
     def second_pass(self, path: Path, f: io.TextIOWrapper, graph: Graph) -> None:
         """
