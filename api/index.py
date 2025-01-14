@@ -64,8 +64,8 @@ def graph_entities():
         # Initialize the graph with the provided repo and credentials
         g = Graph(repo)
 
-        # Retrieve a sub-graph of up to 100 entities
-        sub_graph = g.get_sub_graph(100)
+        # Retrieve a sub-graph of up to 500 entities
+        sub_graph = g.get_sub_graph(500)
 
         logging.info(f"Successfully retrieved sub-graph for repo: {repo}")
         response = {
